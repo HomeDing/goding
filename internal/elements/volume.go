@@ -1,12 +1,16 @@
 package elements
 
+import (
+	"maps"
+)
+
 type VolumeElement struct {
 	Element
 	name string
 }
 
-func NewVolumeElement(elementType string, elementId string) VolumeElement {
-	var e Element = NewElement(elementType, elementId)
+func NewVolumeElement(elementId string) VolumeElement {
+	var e Element = NewElement("volume", elementId)
 	var v VolumeElement = VolumeElement{Element: e, name: "Volume"}
 
 	v.config["min"] = "0"
@@ -14,7 +18,6 @@ func NewVolumeElement(elementType string, elementId string) VolumeElement {
 	v.config["value"] = "50"
 	return v
 }
-
 
 func (e VolumeElement) Set(key, value string) bool {
 
@@ -36,5 +39,10 @@ func (e VolumeElement) Loop() bool {
 }
 
 func (e VolumeElement) State() map[string]string {
-	return e.Element.State()
+	var res = map[string]string{}
+
+	maps.Copy(res, e.Element.State())
+	res["name"] = e.name
+
+	return res
 }

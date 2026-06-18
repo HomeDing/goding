@@ -6,6 +6,7 @@ package serve
 // create a web server and register all http Handlers and Functions
 
 import (
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/HomeDing/goding/internal/global"
 	"github.com/HomeDing/goding/internal/http/verbose"
+
+	"github.com/HomeDing/goding/internal/elements"
 )
 
 // serve command parameters
@@ -60,7 +63,6 @@ func Run() error {
 	var fileServer http.Handler = http.FileServer(http.Dir(global.WebFolder))
 
 	// TODO: enable embedding the files from /web into the binary using the embed package
-
 	mux.Handle("/", fileServer)
 
 	// mux.HandleFunc("GET /api/state", api.HandleStatus)
@@ -68,7 +70,15 @@ func Run() error {
 	mux.Handle("GET /api", http.NotFoundHandler())
 
 	mux.HandleFunc("/api/state/", func(w http.ResponseWriter, r *http.Request) {
-		fmt.Fprint(w, "got path\n")
+		var v = elements.NewVolumeElement("main")
+
+		var stateMap = map[string]map[string]string{}
+
+		w.Header().Set("Content-Type", "application/json")
+
+		stateMap[v.GetKey()] = v.State()
+
+		json.NewEncoder(w).Encode(stateMap)
 	})
 
 	mux.HandleFunc("/task/{id}/", func(w http.ResponseWriter, r *http.Request) {

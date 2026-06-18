@@ -1,9 +1,13 @@
 package elements
 
+// import (
+// "maps"
+// )
+
 type Element struct {
-	Type   string // Type of the element, e.g. "volume", "light", etc.
-	Id     string // Unique identifier for the element, e.g. "speaker1", "lamp2", etc.
-	key		string // key is a unique identifier for the element, e.g. "volume/speaker1"
+	Type   string            // Type of the element, e.g. "volume", "light", etc.
+	Id     string            // Unique identifier for the element, e.g. "speaker1", "lamp2", etc.
+	key    string            // key is a unique identifier for the element, e.g. "volume/speaker1"
 	config map[string]string // config holds the configuration for the element, e.g. {"min": "0", "max": "100"}
 	values map[string]string // values holds the current state of the element, e.g. {"level": "50"}
 }
@@ -14,7 +18,6 @@ func NewElement(elementType string, elementId string) Element {
 	element := Element{
 		Id:     elementId,
 		Type:   elementType,
-		key:    elementType + "/" + elementId,
 		config: map[string]string{},
 		values: map[string]string{},
 	}
@@ -27,6 +30,10 @@ func (e *Element) Init(id string) bool {
 	return true
 }
 
+func (e *Element) GetKey() string {
+	return e.Type + "/" + e.Id
+}
+
 func (e Element) Set(key, value string) bool {
 	return false
 }
@@ -36,5 +43,9 @@ func (e Element) Loop() bool {
 }
 
 func (e Element) State() map[string]string {
-	return (map[string]string{})
+	// var res map[string]string
+	// maps.Copy(res, e.config)
+	// maps.Copy(res, e.values)
+	// return (res)
+	return (e.values)
 }
