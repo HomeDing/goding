@@ -1,5 +1,7 @@
 package verbose
 
+// verbose logging middleware
+
 import (
 	"log/slog"
 	"net/http"
