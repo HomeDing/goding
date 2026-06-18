@@ -7,7 +7,6 @@ package elements
 type Element struct {
 	Type   string            // Type of the element, e.g. "volume", "light", etc.
 	Id     string            // Unique identifier for the element, e.g. "speaker1", "lamp2", etc.
-	key    string            // key is a unique identifier for the element, e.g. "volume/speaker1"
 	config map[string]string // config holds the configuration for the element, e.g. {"min": "0", "max": "100"}
 	values map[string]string // values holds the current state of the element, e.g. {"level": "50"}
 }

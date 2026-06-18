@@ -15,7 +15,7 @@ func TestNewElement(t *testing.T) {
 		t.Fatalf("expected Id %q, got %q", "lamp1", el.Id)
 	}
 
-	if got, want := el.key, "lamp/lamp1"; got != want {
+	if got, want := el.GetKey(), "lamp/lamp1"; got != want {
 		t.Fatalf("expected key %q, got %q", want, got)
 	}
 

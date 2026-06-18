@@ -3,7 +3,7 @@ package elements
 import "testing"
 
 func TestNewVolumeElement(t *testing.T) {
-	volume := NewVolumeElement("volume", "speaker1")
+	volume := NewVolumeElement("speaker1")
 
 	if volume.Type != "volume" {
 		t.Fatalf("expected Type to be %q, got %q", "volume", volume.Type)
@@ -27,7 +27,7 @@ func TestNewVolumeElement(t *testing.T) {
 }
 
 func TestVolumeElementSet(t *testing.T) {
-	volume := NewVolumeElement("volume", "speaker1")
+	volume := NewVolumeElement("speaker1")
 
 	if ok := volume.Set("value", "75"); !ok {
 		t.Fatal("expected Set to return true when changing an existing value")
@@ -47,14 +47,14 @@ func TestVolumeElementSet(t *testing.T) {
 }
 
 func TestVolumeElementLoopAndState(t *testing.T) {
-	volume := NewVolumeElement("volume", "speaker1")
+	volume := NewVolumeElement("speaker1")
 
 	if got := volume.Loop(); got {
 		t.Fatalf("expected Loop to return false, got %v", got)
 	}
 
 	state := volume.State()
-	if len(state) != 0 {
-		t.Fatalf("expected State to return an empty map, got %v", state)
+	if len(state) == 0 {
+		t.Fatalf("expected State to return a non-empty map, got %v", state)
 	}
 }
