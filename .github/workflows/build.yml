@@ -1,4 +1,4 @@
-name: Build
+name: Build and UnitTests
 
 on:
   push:
@@ -40,3 +40,6 @@ jobs:
 
       - name: Validate binary exists
         run: test -f bin/server
+
+      - name: Run unittest
+        run: make test
