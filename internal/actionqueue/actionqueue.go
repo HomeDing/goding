@@ -33,7 +33,7 @@ func GetNext() (string, bool) {
 	}
 
 	// Das erste Element abrufen
-	action := queue
+	action := queue[0]
 	// Das Element aus dem Slice entfernen
 	queue = queue[1:]
 
