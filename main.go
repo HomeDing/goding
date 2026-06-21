@@ -5,10 +5,9 @@ import (
 	"log/slog"
 	"os"
 
+	"github.com/HomeDing/goding/internal/global"
 	"github.com/HomeDing/goding/cmd/help"
 	"github.com/HomeDing/goding/cmd/serve"
-	"github.com/HomeDing/goding/internal/global"
-	// "github.com/HomeDing/goding/internal/global"
 )
 
 // TODO: move global variables into a config struct and use a config file for configuration
@@ -36,7 +35,9 @@ func main() {
 		help.ParseArgs(os.Args[2:])
 
 	case "serve":
-		serve.ParseArgs(os.Args[2:])
+		if len(os.Args) > 2 {
+			serve.ParseArgs(os.Args[2:])
+		}
 
 	default:
 		log.Fatal("unknown command: " + global.Command + ". Use 'goding help' for usage information.")
@@ -51,7 +52,7 @@ func main() {
 		slog.SetLogLoggerLevel(slog.LevelWarn)
 	}
 
-	slog.Info("Startup", slog.String("command", global.Command), slog.Any("args", os.Args[2:]))
+	slog.Info("Startup", slog.String("command", global.Command), slog.Any("args", os.Args))
 
 	switch global.Command {
 	case "help":

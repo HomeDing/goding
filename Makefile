@@ -1,6 +1,6 @@
 # Makefile for goding - build, test, run the server
 
-BINARY := bin/server
+BINARY := main.exe
 PKG := main.go
 
 .PHONY: all build test run clean help
@@ -8,7 +8,6 @@ PKG := main.go
 all: build
 
 build:
-	@mkdir -p bin
 	go build -v -o $(BINARY) $(PKG)
 
 test:
