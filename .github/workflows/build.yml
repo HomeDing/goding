@@ -39,7 +39,7 @@ jobs:
         run: make build
 
       - name: Validate binary exists
-        run: test -f bin/server
+        run: test -f main.exe
 
       - name: Run unittest
         run: make test
