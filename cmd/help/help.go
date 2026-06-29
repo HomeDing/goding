@@ -6,11 +6,15 @@ package help
 // provide high level help information
 // and use Help() function in the command packages to send command specific help information
 
+// this command package doesn't start a goroutine.
+// The WaitGroup is not used therefore.
+
 import (
 	"flag"
 	"fmt"
 	"log"
 	"log/slog"
+	"sync"
 
 	"github.com/HomeDing/goding/cmd/serve"
 	"github.com/HomeDing/goding/internal/global"
@@ -24,6 +28,8 @@ var helpFlags *flag.FlagSet
 // Initialize the serve command and its flags in the init function, which is called before main.
 // This allows us to set up the command and its flags before parsing the command-line arguments in main.
 func Init() {
+	slog.Debug("help.Init()")
+
 	// define the flags for the serve command
 	helpFlags = flag.NewFlagSet("help", flag.ExitOnError)
 	helpFlags.BoolVar(&global.VerboseFlag, "verbose", false, "enable verbose logging")
@@ -37,6 +43,8 @@ func Help() {
 // ParseArgs parses the command-line arguments and sets the global variables accordingly.
 // It returns a boolean indicating whether the serve command was invoked and an error if there was an issue with parsing the arguments.
 func ParseArgs(args []string) (bool, error) {
+	slog.Debug("help.ParseArgs()", slog.Any("args", args))
+
 	if len(args) > 0 {
 		var s string = args[0]
 		if len(s) > 0 && s[0] == '-' {
@@ -64,7 +72,7 @@ func ParseArgs(args []string) (bool, error) {
 
 }
 
-func Run() error {
+func Run(wg *sync.WaitGroup) error {
 	slog.Debug("help.Run()", slog.String("command", helpCommand))
 
 	fmt.Fprintln(helpFlags.Output(),
@@ -97,4 +105,8 @@ func Run() error {
 	}
 
 	return nil
+}
+
+func Stop() {
+	slog.Debug("help.Stop()")
 }
