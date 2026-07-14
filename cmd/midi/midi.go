@@ -3,7 +3,9 @@ package midi
 import (
 	"flag"
 	"fmt"
+	"log"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
@@ -40,7 +42,10 @@ type MIDIEvent struct {
 }
 
 var listener *MIDIListener
+
 var once sync.Once
+
+var actionsRegistry map[string]string = make(map[string]string) // map of midi message to action string
 
 // ----- Command implementation
 
@@ -73,6 +78,17 @@ func ParseArgs(args []string) (bool, error) {
 	return true, nil
 }
 
+// Register a action to be created on a specific signal.
+// The action is a string that represents the action to be taken when the signal is received. The signal is a string that represents the signal to listen for. The action can be a command to execute, a function to call, or any other action that can be represented as a string.
+func Register(midiMsg string, action string) {
+	// normalize the midiMsg to be used as a key for the registered actions.
+	midiMsg = strings.ToLower(strings.ReplaceAll(midiMsg, " ", ""))
+
+	slog.Debug("midi.register", slog.String("midiMsg", midiMsg), slog.String("action", action))
+	actionsRegistry[midiMsg] = action
+}
+
+// Go Routine to listen for MIDI events and process them using registered handlers
 func listen(quitChan chan bool, wg *sync.WaitGroup) error {
 
 	slog.Debug("midi.listen()")
@@ -84,43 +100,55 @@ func listen(quitChan chan bool, wg *sync.WaitGroup) error {
 
 	} else {
 
+		// Listen to the MIDI messages of type NoteOn, NoteOff, ControlChange, and ProgramChange on the specified input port.
+		// and create a midi message string to be used as a key for the registered actions.
 		stop, err := midi.ListenTo(in, func(msg midi.Message, timestampms int32) {
-			var bt []byte
-			var ch, key, val uint8
+			var ch, key, value uint8
 			var ctl uint8
+			var midiMsg string
+
+			// [Channel] <Message> <Note/Control> <Value>
+			value = 0
 
 			switch {
-			case msg.GetSysEx(&bt):
-				fmt.Printf("midi.got sysex: % X\n", bt)
-			case msg.GetNoteStart(&ch, &key, &val):
-				fmt.Printf("midi.start note %s on channel %v with velocity %v\n", midi.Note(key), ch, val)
+			case msg.GetNoteStart(&ch, &key, &value):
+				midiMsg = fmt.Sprintf("[%v] ON %s", ch, midi.Note(key))
+
 			case msg.GetNoteEnd(&ch, &key):
-				fmt.Printf("midi.end note %s on channel %v\n", midi.Note(key), ch)
+				midiMsg = fmt.Sprintf("[%v] OFF %s", ch, midi.Note(key))
 
-			case msg.GetControlChange(&ch, &ctl, &val):
-				fmt.Printf("midi.ControlChange on channel %v controller: %v value: %v\n", ch, ctl, val)
+			case msg.GetControlChange(&ch, &ctl, &value):
+				midiMsg = fmt.Sprintf("[%v] CC %v", ch, ctl)
 
-			case msg.GetProgramChange(&ch, &val):
-				fmt.Printf("midi.ProgramChange on channel %v program: %v\n", ch, val)
+			case msg.GetProgramChange(&ch, &value):
+				midiMsg = fmt.Sprintf("[%v] PC %v", ch, value)
 
 			default:
-				fmt.Printf("midi.DEFAULT channel\n")
-				slog.Debug("midi", slog.Any("msg", msg))
+				// ignore !
+				// fmt.Printf("midi.DEFAULT channel\n")
+				// slog.Debug("midi", slog.Any("msg", msg))
 
-				// ignore
 			}
-		}, midi.UseSysEx())
+
+			// if global.VerboseFlag && len(midiMsg) > 0 {
+			// 	log.Println("MIDI", midiMsg, value)
+			// }
+
+			// normalize the midiMsg to be used as a key for the registered actions.
+			midiMsg = strings.ToLower(strings.ReplaceAll(midiMsg, " ", ""))
+
+			var a = actionsRegistry[midiMsg]
+			if len(a) > 0 {
+				log.Printf("midi.action %s,%v => %s", midiMsg, value, a)
+			} else {
+				log.Printf("midi.noaction %s,%v", midiMsg, value)
+			}
+		}) // , midi.UseSysEx()
 
 		if err != nil {
 			fmt.Printf("ERROR: %s\n", err)
 			return (nil)
 		}
-
-		// if len(controlChan) > 0 {
-		// 	slog.Debug("cc has data")
-		// } else {
-		// 	slog.Debug("cc is empty")
-		// }
 
 		// wait for quit signal
 		<-quitChan
@@ -139,6 +167,10 @@ func Run(wg *sync.WaitGroup) error {
 	slog.Debug("midi.Run()")
 
 	// start a goroutine to listen to midi events
+
+	// test some Registers
+	Register("[11] ON E3", "Pad 1")
+	Register("[14] CC 77", "volume change")
 
 	isStarted = true
 	wg.Add(1)
