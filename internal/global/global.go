@@ -10,6 +10,9 @@ var Command string = ""
 // global flag for verbose logging, can be set by command-line arguments
 var VerboseFlag bool = false
 
+// global flag for development mode. This is set when starting from the command line with any command argument.
+var DevFlag bool = false
+
 // global port variable for web server, can be set by command-line arguments
 var Port int = 3333
 

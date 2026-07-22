@@ -36,7 +36,7 @@ func Init() {
 	// define the flags for the serve command
 	serveFlags = flag.NewFlagSet("serve", flag.ExitOnError)
 	serveFlags.IntVar(&global.Port, "port", 3333, "port to listen on")
-	serveFlags.StringVar(&global.WebFolder, "web", "./web", "folder to serve static files from")
+	serveFlags.StringVar(&global.WebFolder, "folder", "./web", "folder to serve static files from")
 	serveFlags.BoolVar(&global.VerboseFlag, "verbose", false, "enable verbose logging")
 }
 
@@ -91,9 +91,13 @@ func Run(wg *sync.WaitGroup) error {
 		json.NewEncoder(w).Encode(stateMap)
 	})
 
-	mux.HandleFunc("/api/shutdown/", func(w http.ResponseWriter, r *http.Request) {
-		quitChan <- true
-	})
+	if global.DevFlag {
+		// enable shutdown endpoint for development and debugging purposes
+		mux.HandleFunc("/api/shutdown/", func(w http.ResponseWriter, r *http.Request) {
+			slog.Debug("/api/shutdown is called.")
+			quitChan <- true
+		})
+	}
 
 	mux.HandleFunc("/task/{id}/", func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")

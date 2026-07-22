@@ -1,6 +1,6 @@
 # Makefile for goding - build, test, run the server
 
-BINARY := main.exe
+BINARY := goding.exe
 PKG := main.go
 
 .PHONY: all build test run clean help

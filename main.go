@@ -38,6 +38,8 @@ func runCommand(command string, args []string) {
 		help.Run(&wg)
 
 	case "serve":
+		// switch on dev mode to enable supporting functionality for development and debugging.
+		global.DevFlag = true
 		serve.ParseArgs(args)
 		serve.Run(&wg)
 
@@ -46,12 +48,15 @@ func runCommand(command string, args []string) {
 		midi.List()
 
 	case "midi":
+		// switch on dev mode to enable supporting functionality for development and debugging.
+		global.DevFlag = true
 		midi.ParseArgs(args)
 		midi.Run(&wg)
 
 	default:
 		log.Fatal("unknown command: " + command + ". Use 'goding help' for usage information.")
 	} // switch
+
 } // runCommand()
 
 // Command-line parsing behavior:
@@ -67,7 +72,7 @@ func parseAndRun(args []string) {
 	slog.Debug("parse", slog.Any("args", args))
 
 	// os.Args[0] is the program started. ignore.
-	for argIdx := 0; argIdx < len(args); argIdx++ {
+	for argIdx := range args {
 		slog.Debug("parse.process", slog.Any("arg", args[argIdx]))
 
 		if argIdx == len(args) || isCommand(args[argIdx]) {

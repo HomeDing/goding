@@ -2,65 +2,103 @@
 
 ## Overview
 
-This service is a Go HTTP server providing a REST API and static file hosting for frontend assets. It uses only the Go standard library and structured logging via slog.
+This service is a GO HTTP server providing a REST API and static file hosting for
+frontend assets. It uses only the Go standard library and structured logging via slog.
 
-https://notebooklm.google.com/
+## Implemented features
 
-Implemented features
+* Static file serving at /static/ (serves embedded or on-disk files).
+* SPA-friendly fallback: requests to unknown paths under /static/ return index.html when
+  present.
+* API endpoint: GET /api/state (provided by api.HandleStatus).
+* Embedding support: frontend files can be embedded using Go's embed package for a
+  single-binary distribution.
+* Verbose request logging middleware using internal/http/verbose.go and slog.
+* Implement a custom FileServer `GoDingFileServer` for securing against folder listings
+  and delivery of restricted files.
 
-- Static file serving at /static/ (serves embedded or on-disk files).
-- SPA-friendly fallback: requests to unknown paths under /static/ return index.html when present.
-- API endpoint: GET /api/state (provided by api.HandleStatus).
-- Embedding support: frontend files can be embedded using Go's embed package for a single-binary distribution.
-- Verbose request logging middleware using internal/http/verbose.go and slog.
+## CLI options
 
-CLI options
+Using the CLI options is available to start GoDing for development and testing. In
+production the configuration will be provided by the configuration files and the web
+sever will be started by default.
 
-- --port <port>  (default: 8080) — set listening port.
-- --verbose      (default: false) — enable verbose request logging (slog level/info output).
+* `serve`        -- command to run the web server
+* --port <port>  -- (default: 8080) — set listening port.
+* --verbose      -- (default: false) — enable verbose request logging (slog level/info output).
 
-Examples
+### Examples
 
-Build and run (development):
+To run the web server only (no midi receiving) you can use the following commandline:
 
-  go run ./cmd/server --port 8080 --verbose
+``` cmd
+go run main.go serve --port 8088 --verbose
+```
 
-Build release binary:
+To shut down the web server remotely the URL `/api/shutdown/` can be fetched (only in
+dev mode) or the `serve.Stop()` function is called internally.
 
-  go build -o bin/server ./cmd/server
-  ./bin/server --port 8080
+### REST Endpoints
 
-Sample curl requests
+Devices in the HomeDing eco system expose the following HTTP endpoints (excerpt):
 
-- Check API state:
+* `GET /api/state/<type>/<id>` : Retrieve the current state and current values of a
+  specific element by type and ID.
+* `GET /api/state` : Retrieve the current state and current values for all configured
+  elements of the device.
+* `GET /env.json` : Retrieve the current JSON configuration of the device itself.
+* `GET /config.json` : Retrieve the current JSON configuration of the running elements.
+* `GET /api/state/<type>/<id>?<prop>=<value>` : Change a element property or
+  configuration value at runtime or trigger an action in the device.
+* `GET /api/shutdown` : Shut down the web server (in dev mode only)
 
-  curl -v http://localhost:8080/api/state
+These REST services can be used in the GoDing implementation to exchange Windows specific values
+and trigger actions on the windows machine for the defined elements.
 
-- Fetch static file:
 
-  curl -v http://localhost:8080/static/index.html
+## Implementation approach
 
-Logging & middleware
+The web server is implemented in the folder [/cmd/serve](/cmd/serve).
 
-- Uses slog for structured logs.
-- internal/http/verbose.go provides an HTTP middleware that logs method, path, remote addr, duration, and response status. Enable with --verbose or wrap the mux with verbose.HttpLogging(mux).
 
-Embedding static files
+### Request Routing
 
-- To embed web assets, place them under a web/ or static/ directory and use the //go:embed directive in cmd/server or an internal package. The server will serve embedded files when configured; otherwise it falls back to the on-disk file server.
+Routing is the process of deciding which function (or handler) should run when a request
+is sent to the http server with a specific URL. This is implemented by multiplexers
+for http requests (short `mux`).
 
-Extending
+Since this application is implemented starting with go 1.26.4 the enhanced standard
+routing module `http.NewServeMux` of go is used in this application.
 
-- Add routes to cmd/server using http.ServeMux and mux.Handle or mux.HandleFunc.
-- Keep middleware simple: chain logging and any authentication middlewares around the mux.
+With the help of this mux the function that implement the functionality of a specific request
+like RESTful API calls are registered.
 
-Testing
+### Implement Serving Static Files
 
-- Use curl or a browser to verify static files and API routes.
-- For embedded assets, build the binary and run to confirm files are included.
+The web server is not returning file content in all cases for security reasons.
 
-Notes
+* The folder containing the static files is per default `/web`and can be changed by
+  parameter in development mode.
+* Folder listing and delivery of files with restricted characters is prohibited.
+* Request with the following substrings are denied: `..`, `:`
+* Request of files starting with `_` are denied.
+* Requesting files outside the web folder are denied.
 
-- The server intentionally uses only the standard library to keep dependencies minimal and the binary portable.
-- Routes should use ServeMux style patterns (e.g., "/api/state", "/static/") rather than framework-specific path templates.
+
+## Implement Restfull services
+
+* registering of HandleFunc in serve.go
+* all using /api as prefix
+  * JSON encoding of maps and sets
+
+
+## See Also
+
+* [How To Make an HTTP Server in Go](https://www.digitalocean.com/community/tutorials/how-to-make-an-http-server-in-go)
+* [Golang HTTP server: basics](https://medium.com/@bartosz.piekny/golang-http-server-basics-6936ddab7474)
+
+* [net/http documentation](https://pkg.go.dev/net/http)
+* [Better HTTP server routing in Go 1.22](https://eli.thegreenplace.net/2023/better-http-server-routing-in-go-122/)
+
+* TODO: check [multiplexer](https://qbit-glitch.github.io/golang_notes/projects/RestAPI/multiplexer.html)
 

@@ -19,28 +19,18 @@ the planned elements are:
 * ...
 
 
-## Implementation approach
+## Web Server
 
-* [How To Make an HTTP Server in Go](https://www.digitalocean.com/community/tutorials/how-to-make-an-http-server-in-go)
-* [Golang HTTP server: basics](https://medium.com/@bartosz.piekny/golang-http-server-basics-6936ddab7474)
+The web server is used for static files hosting and for
+enabling RESTful services like other HomeDing devices do.
 
-## Implement Request Routing
+Details can be found in [Web Server](doc/webserver.md).
 
-Routing is the process of deciding which function (or handler) should run when a request
-is sent to the http server with a specific URL. This is implemented by multiplexers
-for http requests (short `mux`).
 
-Since this application is implemented starting with go 1.26.4 the enhanced standard
-routing module `http.NewServeMux` of go is used in this application.
+## MIDI receiver
 
-With the help of this mux the function that implement the functionality of a specific request
-like RESTful API calls are registered.
+TODO: Details can be found in [MIDI Receiver](doc/midi.md).
 
-See:
-
-* [net/http documentation](https://pkg.go.dev/net/http)
-* [Better HTTP server routing in Go 1.22](https://eli.thegreenplace.net/2023/better-http-server-routing-in-go-122/)
-* TODO: check [multiplexer](https://qbit-glitch.github.io/golang_notes/projects/RestAPI/multiplexer.html)
 
 ## Logging
 
