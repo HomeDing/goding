@@ -4,26 +4,39 @@ import (
 	"sync"
 )
 
-// Interner Zustand der Aktionswarteschlange
+// Package-level internal state for the action queue.
+//
+// This is a simple, in-memory, FIFO queue for action strings. It is
+// intended for short-lived process-local use and is protected by a mutex
+// for basic concurrent access from multiple goroutines. It does not
+// provide persistence, bounds checking, or blocking semantics — callers
+// should handle those concerns if needed.
 var (
-	// mu schützt die Queue vor gleichzeitigem Zugriff durch mehrere Goroutines
-	mu    sync.Mutex
-	// queue ist der statische FIFO-Puffer für die Aktions-Strings
+	// mu guards the queue from concurrent access by multiple goroutines.
+	mu sync.Mutex
+	// queue is the static FIFO buffer for action strings.
 	queue []string
 )
 
-// Add fügt eine neue Aktion zum statischen FIFO-Puffer hinzu.
-// Diese Funktion ist sicher für den parallelen Zugriff durch mehrere Goroutines.
+// Add appends a new action to the FIFO buffer.
+//
+// This function is safe for concurrent use by multiple goroutines. It
+// performs a simple append which preserves FIFO ordering.
 func Add(action string) {
 	mu.Lock()
 	defer mu.Unlock()
-	
-	// Das Anhängen an den Slice bewahrt die FIFO-Reihenfolge
+
+	// Append preserves FIFO order.
 	queue = append(queue, action)
 }
 
-// GetNext entnimmt die älteste Aktion aus dem Puffer.
-// Gibt den Aktions-String und true zurück, oder einen leeren String und false, falls der Puffer leer ist.
+// GetNext removes and returns the oldest action from the buffer.
+//
+// Returns the action string and true if an element was available, or an
+// empty string and false if the buffer is empty. This operation is safe
+// for concurrent use. Note: removal re-slices the underlying slice which
+// may retain the backing array; if the queue grows large and memory
+// retention is a concern consider copying or using a ring buffer.
 func GetNext() (string, bool) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -32,9 +45,8 @@ func GetNext() (string, bool) {
 		return "", false
 	}
 
-	// Das erste Element abrufen
+	// Retrieve the first element and remove it from the slice.
 	action := queue[0]
-	// Das Element aus dem Slice entfernen
 	queue = queue[1:]
 
 	return action, true
