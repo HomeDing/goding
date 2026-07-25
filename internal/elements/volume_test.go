@@ -13,15 +13,15 @@ func TestNewVolumeElement(t *testing.T) {
 		t.Fatalf("expected Id to be %q, got %q", "speaker1", volume.Id)
 	}
 
-	if got, want := volume.config["min"], "0"; got != want {
+	if got, want := volume.Config["min"], "0"; got != want {
 		t.Fatalf("expected min config %q, got %q", want, got)
 	}
 
-	if got, want := volume.config["max"], "100"; got != want {
+	if got, want := volume.Config["max"], "100"; got != want {
 		t.Fatalf("expected max config %q, got %q", want, got)
 	}
 
-	if got, want := volume.config["value"], "50"; got != want {
+	if got, want := volume.Config["value"], "50"; got != want {
 		t.Fatalf("expected value config %q, got %q", want, got)
 	}
 }
@@ -33,7 +33,7 @@ func TestVolumeElementSet(t *testing.T) {
 		t.Fatal("expected Set to return true when changing an existing value")
 	}
 
-	if got := volume.config["value"]; got != "75" {
+	if got := volume.Config["value"]; got != "75" {
 		t.Fatalf("expected config value %q after Set, got %q", "75", got)
 	}
 

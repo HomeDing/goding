@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"log"
 	"log/slog"
 	"os"
@@ -99,6 +100,69 @@ func parseAndRun(args []string) {
 	}
 }
 
+func LoadConfig() {
+
+	var data string = `{
+	"Element": { 
+	  "e1" : {
+			"key1": "value1",
+			"key2": "value2"
+	  }
+	},
+	"Volume": {
+	  "v1" : {	
+	  	"min": "0",
+			"max": "100",
+			"value": "50"
+	  }
+	}
+}`
+
+	// os.ReadFile(filename)
+
+	// root object
+	var root map[string]any
+	slog.Debug("LoadConfig", slog.String("data", data))
+
+	err := json.Unmarshal([]byte(data), &root)
+	if err == nil {
+
+		// Iterate groups: "person", "boss", ...
+		for elType, elTypeRaw := range root {
+
+			group, ok := elTypeRaw.(map[string]any)
+			slog.Debug("LoadConfig.Type", slog.String("Type", elType))
+
+			if ok {
+				// Iterate elements in group
+				for elId, elRaw := range group {
+					slog.Debug("LoadConfig.Id", slog.String("elId", elId))
+
+					slog.Debug("LoadConfig.attributes", slog.Any("elRaw", elRaw))
+					// elConfig, ok := elRaw.(map[string]any)
+				}
+			}
+		}
+	}
+
+	// for _, c := range cfg {
+	// 	switch c.Type {
+	// 	case "Element":
+	// 		slog.Debug("LoadConfig.Element")
+	// 		e := elements.NewElement("Elem", c.ID)
+	// 		slog.Debug("LoadConfig.Element", slog.String("e.Type", e.Type), slog.String("e.Id", e.Id), slog.Any("e.Config", e.Config), slog.Any("e.Values", e.Values))
+
+	// 	case "Volume":
+	// 		slog.Debug("LoadConfig.Volume")
+	// 		e := elements.NewVolumeElement(c.ID)
+	// 		slog.Debug("LoadConfig.Element", slog.String("e.Type", e.Type), slog.String("e.Id", e.Id), slog.Any("e.Config", e.Config), slog.Any("e.Values", e.Values))
+
+	// 	default: // "person"
+	// 		slog.Debug("LoadConfig.Default")
+	// 	}
+	// }
+}
+
 func main() {
 	// Enable the following lines to get debug output from the start
 	slog.SetLogLoggerLevel(slog.LevelDebug)
@@ -112,6 +176,8 @@ func main() {
 	midi.Init()
 
 	parseAndRun(os.Args[1:])
+
+	LoadConfig()
 
 	signal.Notify(quitChan, syscall.SIGINT, syscall.SIGTERM)
 

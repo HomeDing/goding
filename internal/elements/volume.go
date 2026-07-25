@@ -2,48 +2,56 @@ package elements
 
 import (
 	"maps"
-	// "github.com/HomeDing/goding/internal/elements"
+
+	"github.com/HomeDing/goding/internal/elements/registry"
+	"github.com/HomeDing/goding/internal/elements/types"
 )
 
 type VolumeElement struct {
-	Element
+	*types.Element
 	name string
 }
 
-func NewVolumeElement(elementId string) VolumeElement {
-	var e Element = NewElement("volume", elementId)
-	var v VolumeElement = VolumeElement{Element: e, name: "Volume"}
+func NewVolumeElement(elementId string) *VolumeElement {
+	e := NewElement("volume", elementId)
+	v := &VolumeElement{Element: e, name: "Volume"}
 
-	v.config["min"] = "0"
-	v.config["max"] = "100"
-	v.config["value"] = "50"
+	v.Config["min"] = "0"
+	v.Config["max"] = "100"
+	v.Config["value"] = "50"
+	registry.Register(v.Element)
 	return v
 }
 
-func (e VolumeElement) Set(key, value string) bool {
+// Overwrite the New function to create a new VolumeElement instance with default configuration values.
+func New(elementId string) *VolumeElement {
+	return NewVolumeElement(elementId)
+}
 
-	var oldValue string
-	var ok bool
-
-	oldValue, ok = e.config[key]
-
-	if (ok) && (oldValue != value) {
-		e.config[key] = value
-	} else {
+func (e *VolumeElement) Set(key, value string) bool {
+	oldValue, ok := e.Config[key]
+	if !ok {
 		return false
 	}
+	if oldValue == value {
+		return false
+	}
+	e.Config[key] = value
 	return true
 }
 
-func (e VolumeElement) Loop() bool {
-	return e.Element.Loop()
+func (e *VolumeElement) Loop() bool {
+	return false
 }
 
-func (e VolumeElement) State() map[string]string {
-	var res = map[string]string{}
-
-	maps.Copy(res, e.Element.State())
+func (e *VolumeElement) State() map[string]string {
+	res := map[string]string{}
+	maps.Copy(res, e.Config)
 	res["name"] = e.name
-
 	return res
+}
+
+// register volume element type in the registry
+func init() {
+	NewVolumeElement("default")
 }

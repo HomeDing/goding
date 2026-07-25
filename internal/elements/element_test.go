@@ -1,11 +1,19 @@
 package elements
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/HomeDing/goding/internal/elements/registry"
+	"github.com/HomeDing/goding/internal/elements/types"
+)
 
 func TestNewElement(t *testing.T) {
-	elements = map[string]Element{}
-
 	el := NewElement("lamp", "lamp1")
+	if el == nil {
+		t.Fatal("expected a new element instance")
+	}
+
+	elKey := el.GetKey()
 
 	if el.Type != "lamp" {
 		t.Fatalf("expected Type %q, got %q", "lamp", el.Type)
@@ -19,25 +27,28 @@ func TestNewElement(t *testing.T) {
 		t.Fatalf("expected key %q, got %q", want, got)
 	}
 
-	if len(el.config) != 0 {
-		t.Fatalf("expected empty config map, got %v", el.config)
+	if len(el.Config) != 0 {
+		t.Fatalf("expected empty config map, got %v", el.Config)
 	}
 
-	if len(el.values) != 0 {
-		t.Fatalf("expected empty values map, got %v", el.values)
+	if len(el.Values) != 0 {
+		t.Fatalf("expected empty values map, got %v", el.Values)
 	}
 
-	if got, ok := elements["lamp1"]; !ok {
-		t.Fatalf("expected elements map to contain key %q", "lamp1")
+	got := registry.Find(elKey)
+	if got == nil {
+		t.Fatalf("expected registry to contain key %q", el.GetKey())
+	} else if got != el {
+		t.Fatalf("returned not the original object with %q", el.GetKey())
 	} else if got.Id != el.Id || got.Type != el.Type {
 		t.Fatalf("expected stored element to match returned element, got %v", got)
 	}
 }
 
 func TestElementMethods(t *testing.T) {
-	el := Element{Id: "test1", Type: "test"}
+	el := &types.Element{Id: "test1", Type: "test", Config: map[string]string{}, Values: map[string]string{}}
 
-	if ok := el.Init("new-id"); !ok {
+	if ok := el.Init("test", "new-id"); !ok {
 		t.Fatal("expected Init to return true")
 	}
 
