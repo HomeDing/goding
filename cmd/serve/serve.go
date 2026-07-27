@@ -1,9 +1,12 @@
+// serve.go - Serve command implementation for the GoDing web server
+//
+// This file is part of the OpenSource GoDing project <https://github.com/HomeDing/goding>.
+// Copyright (c) 2026-2026 by Matthias Hertel, <http://www.mathertel.de>
+// This work is licensed under a BSD style license.
+// See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
+
+// Command to start a web server and listen for Actions
 package serve
-
-// Serve Command Implementation
-// This is a command package
-
-// create a web server and register all http Handlers and Functions
 
 import (
 	"context"
@@ -44,8 +47,15 @@ func Help() {
 	slog.Debug("serve.Help()")
 
 	fmt.Fprintln(serveFlags.Output(),
-		`goding serve [parameters} runs the local web server to receive actions from network clients.
-This command can be used to run the application in the background.`)
+		`
+goDing serve starts the local web server receiving actions from network clients.
+to execute create HomeDing actions as defined in the configuration.
+
+Usage:
+
+  goding serve [parameters]
+	`)
+
 	serveFlags.Usage()
 }
 

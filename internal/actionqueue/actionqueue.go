@@ -1,3 +1,11 @@
+// actionqueue.go - In-memory FIFO action queue
+//
+// This file is part of the OpenSource GoDing project <https://github.com/HomeDing/goding>.
+// Copyright (c) 2026-2026 by Matthias Hertel, <http://www.mathertel.de>
+// This work is licensed under a BSD style license.
+// See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
+
+// Package actionQueue implements a simple in-process FIFO queue for action strings.
 package actionQueue
 
 import (

@@ -14,6 +14,40 @@ The project is built with `go 1.26.4` and uses the standard library (`net/http`,
 * `internal/http/verbose.go` - request logging middleware
 * `memo.md` - design notes, routing strategy, logging/middleware approach, and project goals
 
+
+## Source code documentation
+
+### File Header
+
+Every file containing go sourcecode must have a common file header above the package
+definition with a short one line file description and the copyright statement like:
+
+``` txt
+// midi.go - MIDI event handling and listener management
+//
+// This file is part of the OpenSource GoDing project <https://github.com/HomeDing/goding>.
+// Copyright (c) 2026-2026 by Matthias Hertel, <http://www.mathertel.de>
+// This work is licensed under a BSD style license.
+// See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
+
+```
+
+This must be placed before the package statement and separated by a blank line at the end.
+
+A short package description will follow to document the package purpose as a comment to
+the package statement.
+
+
+### Comments at the end of long statements
+
+All statements that are longer than 4 lines and wrappend by brackets should have a
+closing comment after the closing bracket mentioning the statement like
+
+- `} // for` or 
+- `} // if`.
+
+Optional the closing comment can include the condition or var used in the statement. 
+
 ## Goals
 
 * Keep the existing REST API behavior intact
@@ -35,7 +69,7 @@ The application includes a HTTP server providing a REST API and static file host
 * API endpoints: e.g. GET /api/state (provided by api.HandleStatus).
 * Optional Verbose request logging middleware using internal/http/verbose.go and slog.
 
-CommandLine options:
+WebServer CommandLine options:
 
 * "--port"    -- port to listen on
 * "--web"     -- folder to serve static files from

@@ -1,3 +1,11 @@
+// element_type.go - Core Element type definitions
+//
+// This file is part of the OpenSource GoDing project <https://github.com/HomeDing/goding>.
+// Copyright (c) 2026-2026 by Matthias Hertel, <http://www.mathertel.de>
+// This work is licensed under a BSD style license.
+// See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
+
+// Package types provides shared type definitions used across element implementations.
 package types
 
 type Element struct {

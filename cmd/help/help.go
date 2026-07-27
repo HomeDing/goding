@@ -1,10 +1,12 @@
+// help.go - Help command implementation for the GoDing CLI
+//
+// This file is part of the OpenSource GoDing project <https://github.com/HomeDing/goding>.
+// Copyright (c) 2026-2026 by Matthias Hertel, <http://www.mathertel.de>
+// This work is licensed under a BSD style license.
+// See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
+
+// Command implementation to offer high-level help on the command line
 package help
-
-// Help Command Implementation
-// This is a command package
-
-// provide high level help information
-// and use Help() function in the command packages to send command specific help information
 
 // this command package doesn't start a goroutine.
 // The WaitGroup is not used therefore.
@@ -12,14 +14,17 @@ package help
 import (
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"sync"
 
+	"github.com/HomeDing/goding/cmd/midi"
 	"github.com/HomeDing/goding/cmd/serve"
 	"github.com/HomeDing/goding/internal/global"
 )
 
+// Package-level variables for managing the help command state and registered actions.
+
+// helpCommand stores the specific command for which help is requested.
 var helpCommand string = ""
 
 // help command parameters
@@ -33,12 +38,25 @@ func Init() {
 	// define the flags for the serve command
 	helpFlags = flag.NewFlagSet("help", flag.ExitOnError)
 	helpFlags.BoolVar(&global.VerboseFlag, "verbose", false, "enable verbose logging")
-}
+} // Init()
 
 func Help() {
+	slog.Debug("Help.Help()")
+
+	fmt.Fprintln(helpFlags.Output(), `
+Usage:
+
+  goding <command> [parameters]
+
+commands are:
+  serve          start a web server with the web interface and API for controlling devices.
+  midi           start the midi listener to create actions.
+  help           print this help information.
+  help <command> print help for the specified command.
+	`)
 
 	helpFlags.Usage()
-}
+} // Help()
 
 // ParseArgs parses the command-line arguments and sets the global variables accordingly.
 // It returns a boolean indicating whether the serve command was invoked and an error if there was an issue with parsing the arguments.
@@ -56,57 +74,30 @@ func ParseArgs(args []string) (bool, error) {
 		}
 	}
 	return true, nil
-
-	// 			if len(os.Args) == 2 {
-	// 			// global help info
-	// 			os.Exit(0)
-
-	// 		}
-
-	// 		if helpcommand == "serve" {
-	// 			serve.Help()
-	// 		} else if helpcommand == "client" {
-	// 			log.Print("client command help info goes here")
-	// 			// client.Help()
-	// 		}
-
-}
+} // ParseArgs()
 
 func Run(wg *sync.WaitGroup) error {
 	slog.Debug("help.Run()", slog.String("command", helpCommand))
 
 	fmt.Fprintln(helpFlags.Output(),
-		`goding is tool for enabling remote control of windows devices through a web interface.`)
+		`
+goDing is a Windows service application to use a Windows machine
+to execute HomeDing compatible actions triggered by call to a web server and by midi messages.
+  `)
 
 	switch helpCommand {
 	case "serve":
 		serve.Help()
-		return nil
 
-	case "client":
-		log.Print("client command help info goes here")
-		return nil
+	case "midi":
+		midi.Help()
 
 	default:
-		if len(helpCommand) > 0 {
-
-		}
-
-		fmt.Fprintln(helpFlags.Output(),
-			`  Usage:
-
-    goding <command> [parameters]
-
-  the commands are:
-    serve          start a web server with the web interface and API for controlling devices.
-    help           print this help information.
-    help <command> print help for the specified command.
-	`)
+		Help()
 	}
-
 	return nil
-}
+} // Run()
 
 func Stop() {
 	slog.Debug("help.Stop()")
-}
+} // Stop()

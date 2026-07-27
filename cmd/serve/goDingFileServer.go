@@ -1,3 +1,11 @@
+// goDingFileServer.go - File server helper for GoDing static files
+//
+// This file is part of the OpenSource GoDing project <https://github.com/HomeDing/goding>.
+// Copyright (c) 2026-2026 by Matthias Hertel, <http://www.mathertel.de>
+// This work is licensed under a BSD style license.
+// See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
+
+// Package serve provides HTTP handlers and helpers for serving web assets.
 package serve
 
 import (

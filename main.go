@@ -1,3 +1,4 @@
+// Package main provides the command line parsing and command execution for the GoDing application.
 package main
 
 import (
@@ -7,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"sync"
 
@@ -19,6 +21,8 @@ import (
 // TODO: move global variables into a config struct and use a config file for configuration
 
 var wg sync.WaitGroup
+
+var helpMode bool = false
 
 // check if a string is a command.
 // Commands are the first non-flag token in the command line arguments.
@@ -76,21 +80,21 @@ func parseAndRun(args []string) {
 	for argIdx := range args {
 		slog.Debug("parse.process", slog.Any("arg", args[argIdx]))
 
-		if argIdx == len(args) || isCommand(args[argIdx]) {
-			// First last handle command
-			if len(command) > 0 {
-				runCommand(command, args[firstParamIdx:lastParamIdx+1])
-			}
+		if !(argIdx == len(args) || isCommand(args[argIdx])) {
+			// This argument is a parameter (short case first)
+			lastParamIdx = argIdx
+			continue
+		}
 
-			if argIdx < len(args) {
-				// next command
-				command = args[argIdx]
-				firstParamIdx = argIdx + 1
-				lastParamIdx = argIdx
-			}
+		// First/last: handle command
+		if len(command) > 0 {
+			runCommand(command, args[firstParamIdx:lastParamIdx+1])
+		}
 
-		} else {
-			// This argument is a parameter
+		if argIdx < len(args) {
+			// next command
+			command = args[argIdx]
+			firstParamIdx = argIdx + 1
 			lastParamIdx = argIdx
 		}
 	} // for
@@ -100,7 +104,8 @@ func parseAndRun(args []string) {
 	}
 }
 
-func LoadConfig() {
+// loadConfig loads the configuration from a JSON file and creates and initializes the Elements.
+func loadConfig() {
 
 	var data string = `{
 	"Element": { 
@@ -144,29 +149,14 @@ func LoadConfig() {
 			}
 		}
 	}
-
-	// for _, c := range cfg {
-	// 	switch c.Type {
-	// 	case "Element":
-	// 		slog.Debug("LoadConfig.Element")
-	// 		e := elements.NewElement("Elem", c.ID)
-	// 		slog.Debug("LoadConfig.Element", slog.String("e.Type", e.Type), slog.String("e.Id", e.Id), slog.Any("e.Config", e.Config), slog.Any("e.Values", e.Values))
-
-	// 	case "Volume":
-	// 		slog.Debug("LoadConfig.Volume")
-	// 		e := elements.NewVolumeElement(c.ID)
-	// 		slog.Debug("LoadConfig.Element", slog.String("e.Type", e.Type), slog.String("e.Id", e.Id), slog.Any("e.Config", e.Config), slog.Any("e.Values", e.Values))
-
-	// 	default: // "person"
-	// 		slog.Debug("LoadConfig.Default")
-	// 	}
-	// }
 }
 
+// Main entry point for the GoDing application.
+// It initializes the application, parses command-line arguments, and runs the specified commands.
 func main() {
 	// Enable the following lines to get debug output from the start
-	slog.SetLogLoggerLevel(slog.LevelDebug)
-	global.VerboseFlag = true
+	// slog.SetLogLoggerLevel(slog.LevelDebug)
+	// global.VerboseFlag = true
 
 	slog.Debug("main.main()")
 	var quitChan = make(chan os.Signal, 1)
@@ -175,92 +165,36 @@ func main() {
 	serve.Init()
 	midi.Init()
 
-	parseAndRun(os.Args[1:])
+	if os.Args[1] == "help" {
+		helpMode = true
+		help.ParseArgs(os.Args[2:])
+		help.Run(&wg)
 
-	LoadConfig()
+	} else {
+		parseAndRun(os.Args[1:])
 
-	signal.Notify(quitChan, syscall.SIGINT, syscall.SIGTERM)
+		loadConfig()
 
-	// Run a goroutine to listen for signals
-	go func() {
-		slog.Debug("[Signal] waiting")
-		sig := <-quitChan // Wait for a signal
-		slog.Debug("[Signal] Caught signal", slog.Any("sig", sig))
+		signal.Notify(quitChan, syscall.SIGINT, syscall.SIGTERM)
 
-		help.Stop()
-		serve.Stop()
-		midi.Stop()
-		// os.Exit(0) // Exit after cleanup
-	}()
+		// Run a goroutine to listen for signals
+		go func() {
+			slog.Debug("[Signal] waiting")
+			sig := <-quitChan // Wait for a signal
+			slog.Debug("[Signal] Caught signal", slog.Any("sig", sig))
 
-	// if len(os.Args[argIdx]) > 0 && os.Args[argIdx][0] != '-' {
-	//   switch command {
-	//   case "help":
-	//     help.ParseArgs(os.Args[firstParamIdx:argIdx])
-	//   case "serve":
-	//     serve.ParseArgs(os.Args[firstParamIdx:argIdx])
-	//   case "midi", "list":
-	//     midi.ParseArgs(os.Args[firstParamIdx:argIdx])
-	//   default:
-	//     log.Fatal("unknown command: " + command + ". Use 'goding help' for usage information.")
-	//   }
-	//   commandsToRun = append(commandsToRun, command)
-	//   command = os.Args[argIdx]
-	//   firstParamIdx = argIdx + 1
-	// }
+			help.Stop()
+			serve.Stop()
+			midi.Stop()
+		}()
 
-	// switch command {
-	// case "help":
-	// 	help.ParseArgs(os.Args[firstParamIdx:])
-	// case "serve":
-	// 	serve.ParseArgs(os.Args[firstParamIdx:])
-	// case "midi", "list":
-	// 	midi.ParseArgs(os.Args[firstParamIdx:])
-	// default:
-	// 	log.Fatal("unknown command: " + command + ". Use 'goding help' for usage information.")
-	// }
-	// commandsToRun = append(commandsToRun, command)
-	// global.Command = commandsToRun[0]
+		slog.Debug("main.wait...")
+		wg.Wait() // Block until all workers finish
+	}
 
-	// if global.VerboseFlag {
-	// 	slog.SetLogLoggerLevel(slog.LevelDebug)
-	// 	slog.Debug("setting verbose mode.")
-	// } else {
-	// 	slog.SetLogLoggerLevel(slog.LevelWarn)
-	// }
-
-	// slog.Info("Startup", slog.String("command", global.Command), slog.Any("args", os.Args))
-
-	// var wg sync.WaitGroup
-	// for _, cmd := range commandsToRun {
-	// 	switch cmd {
-	// 	case "serve":
-	// 		wg.Add(1)
-	// 		go func() {
-	// 			defer wg.Done()
-	// 			serve.Run()
-	// 		}()
-	// 	case "midi":
-	// 		wg.Add(1)
-	// 		go func() {
-	// 			defer wg.Done()
-	// 			midi.Run()
-	// 		}()
-	// 	case "list":
-	// 		wg.Add(1)
-	// 		go func() {
-	// 			defer wg.Done()
-	// 			midi.List()
-	// 		}()
-	// 	}
-	// }
-
-	// wg.Wait()
-
-	slog.Debug("main.wait...")
-	wg.Wait() // Block until all workers finish
-	slog.Debug("main.end")
-
-	// time.Sleep(time.Second * 4)
+	if global.VerboseFlag {
+		slog.Debug("main.end")
+		time.Sleep(time.Second * 1) // Give some time for cleanup before exiting
+	}
 
 }

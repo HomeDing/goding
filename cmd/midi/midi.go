@@ -1,3 +1,15 @@
+// midi.go - MIDI event handling and listener management
+//
+// This file is part of the OpenSource GoDing project <https://github.com/HomeDing/goding>.
+// Copyright (c) 2026-2026 by Matthias Hertel, <http://www.mathertel.de>
+// This work is licensed under a BSD style license.
+// See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
+
+// Command to start the midi listener
+// The midi package provides functionality for handling MIDI events, including listening for MIDI messages,
+// registering handlers for specific events, and managing the lifecycle of a MIDI listener.
+// It uses the gomidi library to interface with MIDI devices and supports concurrent access through mutexes.
+// This file is part of the OpenSource GoDing project <https://github.com/HomeDing/goding>.
 package midi
 
 import (
@@ -15,7 +27,12 @@ import (
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv"
 )
 
+// Package-level variables for managing the MIDI listener state and registered actions.
+
+// isStarted indicates internally whether the MIDI listener has been started.
 var isStarted = false
+
+// quitChan is used to signal the MIDI listener goroutine to stop listening for events.
 var quitChan = make(chan bool)
 
 // ----- Command implementation
@@ -67,6 +84,19 @@ func Init() {
 
 func Help() {
 	slog.Debug("Midi.Help()")
+
+	fmt.Fprintln(midiFlags.Output(),
+		`
+goDing midi starts the midi listener receiving midi messages
+to execute create HomeDing actions as defined in the configuration.
+
+Usage:
+
+  goding midi [parameters]`)
+
+	fmt.Fprintln(midiFlags.Output())
+
+	midiFlags.Usage()
 }
 
 // ParseArgs parses the command-line arguments and sets the global variables accordingly.
