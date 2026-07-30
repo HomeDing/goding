@@ -1,7 +1,11 @@
 # Makefile for goding - build, test, run the server
 
+$(info )
+$(info ===== Make of GoDing =====)
+$(info )
+
 .DEFAULT_GOAL := build
-BINARY := goding.exe
+BINARY := goDing.exe
 PKG := main.go
 
 .PHONY: all build test run clean help
@@ -9,11 +13,11 @@ PKG := main.go
 all: build
 
 build:
-	@echo building $(BINARY)...
+	$(info building $(BINARY)...)
 	go build -v -o $(BINARY) $(PKG)
 
 test:
-	@echo testing...
+	$(info testing...)
 	go test ./...
 
 run:
@@ -23,10 +27,12 @@ clean:
 	-rm -f $(BINARY)
 
 help:
-	@echo "Usage: make [target]"
-	@echo "Targets:"
-	@echo "  build  - build the binary (default)"
-	@echo "  test   - run go tests"
-	@echo "  run    - run with `go run`"
-	@echo "  clean  - remove built binaries"
-	@echo "  help   - show this help"
+	$(info Usage: make [target])
+	$(info )
+	$(info Targets:)
+	$(info   build  - build the binary (default))
+	$(info   test   - run go tests)
+	$(info   run    - run with `go run`)
+	$(info   clean  - remove built binaries)
+	$(info   help   - show this help)
+	$(info )

@@ -39,23 +39,23 @@ func runCommand(command string, args []string) {
 
 	switch command {
 	case "help":
-		help.ParseArgs(args)
+		help.ParseArguments(args)
 		help.Run(&wg)
 
 	case "serve":
 		// switch on dev mode to enable supporting functionality for development and debugging.
 		global.DevFlag = true
-		serve.ParseArgs(args)
+		serve.ParseArguments(args)
 		serve.Run(&wg)
 
 	case "list":
-		midi.ParseArgs(args)
+		midi.ParseArguments(args)
 		midi.List()
 
 	case "midi":
 		// switch on dev mode to enable supporting functionality for development and debugging.
 		global.DevFlag = true
-		midi.ParseArgs(args)
+		midi.ParseArguments(args)
 		midi.Run(&wg)
 
 	default:
@@ -167,7 +167,7 @@ func main() {
 
 	if os.Args[1] == "help" {
 		helpMode = true
-		help.ParseArgs(os.Args[2:])
+		help.ParseArguments(os.Args[2:])
 		help.Run(&wg)
 
 	} else {

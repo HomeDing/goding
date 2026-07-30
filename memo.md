@@ -68,73 +68,7 @@ Sending Actions by using URLs by using the notation and syntax of Actions you ca
 URL to pass an action into a device manually e.g. by using
 `http://(devicename)/api/state/digitalOut/D5?value=1`
 
-.
 
-* [Middleware Patterns in Go](https://drstearns.github.io/tutorials/gomiddleware/)
+## See also
 
-## GO
-
-* `go version` -- go version go1.26.4 windows/amd64
-* `go build cmd\server\main.go`
-* `go test ./...`
-
-``` txt
-Usage:
-        go <command> [arguments]
-
-The commands are:
-
-        bug         start a bug report
-        build       compile packages and dependencies
-        clean       remove object files and cached files
-        doc         show documentation for package or symbol
-        env         print Go environment information
-        fix         apply fixes suggested by static checkers
-        fmt         gofmt (reformat) package sources
-        generate    generate Go files by processing source
-        get         add dependencies to current module and install them
-        install     compile and install packages and dependencies
-        list        list packages or modules
-        mod         module maintenance
-        work        workspace maintenance
-        run         compile and run Go program
-        telemetry   manage telemetry data and settings
-        test        test packages
-        tool        run specified go tool
-        version     print Go version
-        vet         report likely mistakes in packages
-
-Use "go help <command>" for more information about a command.
-
-Additional help topics:
-
-        buildconstraint build constraints
-        buildjson       build -json encoding
-        buildmode       build modes
-        c               calling between Go and C
-        cache           build and test caching
-        environment     environment variables
-        filetype        file types
-        goauth          GOAUTH environment variable
-        go.mod          the go.mod file
-        gopath          GOPATH environment variable
-        goproxy         module proxy protocol
-        importpath      import path syntax
-        modules         modules, module versions, and more
-        module-auth     module authentication using go.sum
-        packages        package lists and patterns
-        private         configuration for downloading non-public code
-        testflag        testing flags
-        testfunc        testing functions
-        vcs             controlling version control with GOVCS
-
-Use "go help <topic>" for more information about that topic.
-```
-
-## Make (not installed)
-
-make build
-make test
-make run
-make clean
-
+* [Go Goroutines and Channels](https://tutorials.technology/tutorials/go-goroutines-channels-concurrency-2026.html)

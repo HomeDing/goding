@@ -5,17 +5,19 @@ The project is built with `go 1.26.4` and uses the standard library (`net/http`,
 
 ## Current structure
 
-* `main.go` - entrypoint to the application including commandline parsing
-* `cmd/serve/serve.go` - HTTP server entrypoint, runs a goroutine
-* `cmd/midi/midi.go` - MIDI entrypoint, runs a goroutine
-* `cmd/help/help.go` - Help entrypoint, runs once and terminates the app after run.
-* `web/` -  This folder is the root folder for all static web content.
-* `api/status.go` - current API handler for `/api/state`
-* `internal/http/verbose.go` - request logging middleware
-* `memo.md` - design notes, routing strategy, logging/middleware approach, and project goals
+* `/main.go` - entrypoint to the application and command line parsing
+* `/cmd/` - all command line startable commands are implemented in this folder
+* `/cmd/serve/serve.go` - HTTP server entrypoint, runs a goroutine
+* `/cmd/midi/midi.go` - MIDI entrypoint, runs a goroutine
+* `/cmd/help/help.go` - Help entrypoint, runs once and terminates the app after run.
+* `/web/` -  This folder is the root folder for all static web content.
+* `/internal/api/status.go` - current API handler for `/api/state`
+* `/internal/http/verbose.go` - request logging middleware
+* `/memo.md` - design notes, routing strategy, logging/middleware approach, and project goals
+* `/readme.md` - About this project and further info
 
 
-## Source code documentation
+## Source code and documentation rules
 
 ### File Header
 
@@ -46,21 +48,48 @@ closing comment after the closing bracket mentioning the statement like
 - `} // for` or 
 - `} // if`.
 
-Optional the closing comment can include the condition or var used in the statement. 
+Optional the closing comment can include the condition or var used in the statement.
 
-## Goals
+For if statements the closing bracket will be the closing bracket of the `else` part of the statement.
 
-* Keep the existing REST API behavior intact
+
+### Implementation Style
+
+With `if` statements this project prefers not to have long if statements and short else statements.
+Instead the if clause should be reversed so the short statement comes first and the else statement can be read in sight if the if clause.
+
+### Logging
+
+Use structured logging via `slog` for all logging and HTTP requests.
+
+
+## Project Goals
+
+* Keep the existing REST API behavior from HomeDing library
 * Support a static file web server for a frontend or assets
 * Use `http.NewServeMux` to create a standard `ServeMux` and use standard library
   middleware patterns where possible.
 * Add or improve command-line options for port selection and verbose logging
 * Avoid unnecessary external dependencies
-* use the flag package for commandline parsing.
+
+## Command and Concurrency Patterns
+
+* Init() -- internal initialization of the command package
+* Help() -- print a brief help message to output
+* ParseArguments(args []string) -- parse the given arguments for configuration
+* Run() -- run the command
+  - When using no background Goroutine, ignore the WaitGroup parameter andjust do what
+    needs to be done.
+  - When using a background Goroutine, set the local state to "started", call Add() on
+    the Waitgroup and then start the go Goroutine, stop when signalled to stop by the local control channel
+    and call Done() on the Waitgroup
+* Stop() -- signal a stop command to the local control channel.
+
 
 ## WebServer
 
-The application includes a HTTP server providing a REST API and static file hosting for frontend assets. It uses only the Go standard library and structured logging via slog.
+The application includes a HTTP server providing a REST API and static file hosting for
+frontend assets. It only uses the Go standard library.
 
 ### Implemented features
 
@@ -86,6 +115,8 @@ The relevant events can be configured and actions will be created to trigger cha
 The startup flow is centralized in `main.go`, which acts as the top-level dispatcher for
 the application. Here the commandline parsing is implemented and the required commands are started.
 
+* Use the flag package for commandline parsing.
+
 * The program first initializes all command packages by calling `<command>.Init()`.
   These setup functions register the available flags for each command.
 
@@ -93,8 +124,8 @@ the application. Here the commandline parsing is implemented and the required co
   * If no subcommand is provided, it defaults to serve.
   * Otherwise, it uses the first argument as the selected command, such as help or serve.
 * Before dispatching, it parses the command-specific arguments:
-  * help.ParseArgs(os.Args[2:]) handles help-related arguments.
-  * serve.ParseArgs(os.Args[2:]) parses the flags for the server command.
+  * help.ParseArguments(os.Args[2:]) handles help-related arguments.
+  * serve.ParseArguments(os.Args[2:]) parses the flags for the server command.
 * The application then applies logging configuration based on the global verbose flag,
   adjusting the log level before execution.
 * Finally, it calls the appropriate command runner:
@@ -113,11 +144,15 @@ In short, main.go performs three main steps for command startup:
 All command implementations in the `/cmd` folder are implementing the following entrypoints:
 
 * Init() -- for initialization of anything the command needs before starting any activity. This may include verifications of the environment.
+* ParseArguments(args) --  parse all given arguments.
 * Help() -- send any helpful information about functionality and parameters to the log output.
-* ParseArgs(args) --  parse all given arguments.
 * Run() -- run the command once or start a goroutine to run a service.
+* Stop() -- run the command once or start a goroutine to run a service.
 
-TODO: ParseArguments should be global to avoid overlap. Maybe add optional parameters in the Init phase.
+To handle running of multiple goroutines the Run function has a 
+sync.WaitGroup parameter that must be used to signal the running background process. 
+
+func Run(wg *sync.WaitGroup) error {
 
 
 ## Logging
@@ -148,7 +183,6 @@ TODO: Embedding support: frontend files can be embedded using Go's embed package
 
 ## What to do
 
-* Use structured logging via `slog` for any logging and HTTP requests
 * enable embedding the files from /web into the binary using the embed package
 
 ## Developer notes
@@ -159,3 +193,4 @@ TODO: Embedding support: frontend files can be embedded using Go's embed package
 * If adding static file support, prefer a clean root path such as `/static/` or a SPA-friendly fallback.
 
 > Use these instructions as the primary guide for changes in this repository. Keep the changes simple, idiomatic, and aligned with the project's existing standard library approach.
+

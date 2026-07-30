@@ -99,10 +99,10 @@ Usage:
 	midiFlags.Usage()
 }
 
-// ParseArgs parses the command-line arguments and sets the global variables accordingly.
+// ParseArguments parses the command-line arguments and sets the global variables accordingly.
 // It returns a boolean indicating whether the serve command was invoked and an error if there was an issue with parsing the arguments.
-func ParseArgs(args []string) (bool, error) {
-	slog.Debug("midi.ParseArgs()", slog.Any("args", args))
+func ParseArguments(args []string) (bool, error) {
+	slog.Debug("midi.ParseArguments()", slog.Any("args", args))
 
 	midiFlags.Parse(args)
 	return true, nil
