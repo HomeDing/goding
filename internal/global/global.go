@@ -25,3 +25,8 @@ var Port int = 3333
 
 // global web folder variable for serving static files, can be set by command-line arguments
 var WebFolder string = "./web"
+
+// global flag that is true while configuration ex processed.
+// This is used in the Set method of elements
+// to disable changing Config values while running.
+var ConfigMode bool = true

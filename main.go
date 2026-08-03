@@ -15,6 +15,8 @@ import (
 	"github.com/HomeDing/goding/cmd/help"
 	"github.com/HomeDing/goding/cmd/midi"
 	"github.com/HomeDing/goding/cmd/serve"
+	"github.com/HomeDing/goding/internal/elements/element"
+	"github.com/HomeDing/goding/internal/elements/volumeElement"
 	"github.com/HomeDing/goding/internal/global"
 )
 
@@ -76,7 +78,7 @@ func parseAndRun(args []string) {
 
 	slog.Debug("parse", slog.Any("args", args))
 
-	// os.Args[0] is the program started. ignore.
+	// args[0] is the program started. ignore.
 	for argIdx := range args {
 		slog.Debug("parse.process", slog.Any("arg", args[argIdx]))
 
@@ -115,7 +117,7 @@ func loadConfig() {
 	  }
 	},
 	"Volume": {
-	  "v1" : {	
+	  "main" : {	
 	  	"min": "0",
 			"max": "100",
 			"value": "50"
@@ -134,16 +136,37 @@ func loadConfig() {
 
 		// Iterate groups: "person", "boss", ...
 		for elType, elTypeRaw := range root {
+			// slog.Debug("LoadConfig.Type", slog.String("Type", elType))
 
 			group, ok := elTypeRaw.(map[string]any)
-			slog.Debug("LoadConfig.Type", slog.String("Type", elType))
-
 			if ok {
 				// Iterate elements in group
 				for elId, elRaw := range group {
-					slog.Debug("LoadConfig.Id", slog.String("elId", elId))
+					slog.Debug("LoadConfig.create", "key", element.MakeKey(elType, elId))
+					var el element.Element
 
-					slog.Debug("LoadConfig.attributes", slog.Any("elRaw", elRaw))
+					// create element of type elType with id elId
+					if elType == "Volume" {
+						el = volumeElement.NewVolumeElement(elId)
+					}
+					slog.Debug("LoadConfig.created:", slog.Any("element", el))
+
+					if el != nil {
+						// Iterate attributes of element
+						single, ok := elRaw.(map[string]any)
+						if ok {
+							for attr, attrRaw := range single {
+								slog.Debug("LoadConfig.set", slog.String("attr", attr), slog.Any("attrRaw", attrRaw))
+
+								el.Set(attr, attrRaw.(string))
+
+								// attributes, ok := elRaw.(map[string]any)
+
+								// // Iterate attributes
+								// 	slog.Debug("LoadConfig.attributes", slog.Any("elRaw", elRaw))
+							} // for
+						}
+					} // if el != nil
 					// elConfig, ok := elRaw.(map[string]any)
 				}
 			}
@@ -155,23 +178,30 @@ func loadConfig() {
 // It initializes the application, parses command-line arguments, and runs the specified commands.
 func main() {
 	// Enable the following lines to get debug output from the start
-	// slog.SetLogLoggerLevel(slog.LevelDebug)
-	// global.VerboseFlag = true
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	global.VerboseFlag = true
 
 	slog.Debug("main.main()")
 	var quitChan = make(chan os.Signal, 1)
+	args := os.Args
 
 	help.Init()
 	serve.Init()
 	midi.Init()
 
-	if os.Args[1] == "help" {
+	if len(args) == 1 {
+		slog.Info("main no parameters, defaulting to 'midi serve'")
+		// args = append(args, "midi", "serve")
+		args = append(args, "serve")
+	}
+
+	if args[1] == "help" {
 		helpMode = true
-		help.ParseArguments(os.Args[2:])
+		help.ParseArguments(args[2:])
 		help.Run(&wg)
 
 	} else {
-		parseAndRun(os.Args[1:])
+		parseAndRun(args[1:])
 
 		loadConfig()
 

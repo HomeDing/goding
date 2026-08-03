@@ -19,7 +19,7 @@ func TestAddAndFindUsePointerIdentity(t *testing.T) {
 	el := &types.Element{Type: "lamp", Id: "lamp1", Config: map[string]string{}, Values: map[string]string{}}
 	add(el)
 
-	got := find(el.GetKey())
+	got := FindByKey(el.GetKey())
 	if got == nil {
 		t.Fatal("expected element to be found")
 	}

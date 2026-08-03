@@ -28,8 +28,8 @@ func TestNewVolumeElement(t *testing.T) {
 		t.Fatalf("expected max config %q, got %q", want, got)
 	}
 
-	if got, want := volume.Config["value"], "50"; got != want {
-		t.Fatalf("expected value config %q, got %q", want, got)
+	if got, want := volume.Values["value"], "50"; got != want {
+		t.Fatalf("expected value in Values map %q, got %q", want, got)
 	}
 }
 
@@ -40,12 +40,20 @@ func TestVolumeElementSet(t *testing.T) {
 		t.Fatal("expected Set to return true when changing an existing value")
 	}
 
-	if got := volume.Config["value"]; got != "75" {
-		t.Fatalf("expected config value %q after Set, got %q", "75", got)
+	if got := volume.Values["value"]; got != "75" {
+		t.Fatalf("expected Values value %q after Set, got %q", "75", got)
 	}
 
 	if ok := volume.Set("value", "75"); ok {
 		t.Fatal("expected Set to return false when value is unchanged")
+	}
+
+	if ok := volume.Set("value", "500"); !ok {
+		t.Fatal("expected Set to return true when value is changed")
+	}
+
+	if got := volume.Values["value"]; got != "100" {
+		t.Fatalf("expected Values value to be contraint to max 100 after Set, got %q", got)
 	}
 
 	if ok := volume.Set("unknown", "10"); ok {
@@ -63,5 +71,17 @@ func TestVolumeElementLoopAndState(t *testing.T) {
 	state := volume.State()
 	if len(state) == 0 {
 		t.Fatalf("expected State to return a non-empty map, got %v", state)
+	}
+}
+
+func TestVolumeElementRejectsInvalidValue(t *testing.T) {
+	volume := NewVolumeElement("speaker1")
+
+	if ok := volume.Set("value", "not-a-number"); ok {
+		t.Fatal("expected Set to reject invalid numeric values")
+	}
+
+	if got := volume.Values["value"]; got != "50" {
+		t.Fatalf("expected Values value to remain %q after invalid Set, got %q", "50", got)
 	}
 }

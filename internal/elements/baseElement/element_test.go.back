@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/HomeDing/goding/internal/elements/registry"
-	"github.com/HomeDing/goding/internal/elements/types"
 )
 
 func TestNewElement(t *testing.T) {
@@ -42,7 +41,7 @@ func TestNewElement(t *testing.T) {
 		t.Fatalf("expected empty values map, got %v", el.Values)
 	}
 
-	got := registry.Find(elKey)
+	got := registry.FindByKey(elKey)
 	if got == nil {
 		t.Fatalf("expected registry to contain key %q", el.GetKey())
 	} else if got != el {
@@ -53,15 +52,7 @@ func TestNewElement(t *testing.T) {
 }
 
 func TestElementMethods(t *testing.T) {
-	el := &types.Element{Id: "test1", Type: "test", Config: map[string]string{}, Values: map[string]string{}}
-
-	if ok := el.Init("test", "new-id"); !ok {
-		t.Fatal("expected Init to return true")
-	}
-
-	if el.Id != "new-id" {
-		t.Fatalf("expected Id to update to %q, got %q", "new-id", el.Id)
-	}
+	el := &Element{Id: "test1", Type: "test", Config: map[string]string{}, Values: map[string]string{}}
 
 	if ok := el.Set("key", "value"); ok {
 		t.Fatal("expected Set to return false for base Element")

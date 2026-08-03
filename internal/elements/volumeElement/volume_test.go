@@ -1,0 +1,84 @@
+// volume_test.go - Unit tests for VolumeElement
+//
+// This file is part of the OpenSource GoDing project <https://github.com/HomeDing/goding>.
+// Copyright (c) 2026-2026 by Matthias Hertel, <http://www.mathertel.de>
+// This work is licensed under a BSD style license.
+// See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
+
+package volumeElement
+
+import "testing"
+
+func TestNewVolumeElement(t *testing.T) {
+	volume := NewVolumeElement("speaker1")
+
+	if got := volume.GetKey(); got != "volume/speaker1" {
+		t.Fatalf("expected key to be %q, got %q", "volume/speaker1", got)
+	}
+
+	// Check default configuration values
+	if got, want := volume.Config["min"], "0"; got != want {
+		t.Fatalf("expected min config %q, got %q", want, got)
+	}
+
+	if got, want := volume.Config["max"], "100"; got != want {
+		t.Fatalf("expected max config %q, got %q", want, got)
+	}
+
+	if got, want := volume.Values["value"], "50"; got != want {
+		t.Fatalf("expected value in Values map %q, got %q", want, got)
+	}
+}
+
+func TestVolumeElementSet(t *testing.T) {
+	volume := NewVolumeElement("speaker2")
+
+	if ok := volume.Set("value", "75"); !ok {
+		t.Fatal("expected Set to return true when changing value")
+	}
+
+	if got := volume.Values["value"]; got != "75" {
+		t.Fatalf("expected Values value %q after Set, got %q", "75", got)
+	}
+
+	if ok := volume.Set("value", "75"); ok {
+		t.Fatal("expected Set to return false when value is unchanged")
+	}
+
+	if ok := volume.Set("value", "500"); !ok {
+		t.Fatal("expected Set to return true when value is changed")
+	}
+
+	if got := volume.Values["value"]; got != "100" {
+		t.Fatalf("expected Values value to be constraint to max 100 after Set, got %q", got)
+	}
+
+	if ok := volume.Set("unknown", "10"); ok {
+		t.Fatal("expected Set to return false for an unknown config key")
+	}
+}
+
+func TestVolumeElementLoopAndState(t *testing.T) {
+	volume := NewVolumeElement("speaker1")
+
+	if got := volume.Loop(); got {
+		t.Fatalf("expected Loop to return false, got %v", got)
+	}
+
+	state := volume.State()
+	if len(state) == 0 {
+		t.Fatalf("expected State to return a non-empty map, got %v", state)
+	}
+}
+
+func TestVolumeElementRejectsInvalidValue(t *testing.T) {
+	volume := NewVolumeElement("speaker1")
+
+	if ok := volume.Set("value", "not-a-number"); ok {
+		t.Fatal("expected Set to reject invalid numeric values")
+	}
+
+	if got := volume.Values["value"]; got != "50" {
+		t.Fatalf("expected Values value to remain %q after invalid Set, got %q", "50", got)
+	}
+}

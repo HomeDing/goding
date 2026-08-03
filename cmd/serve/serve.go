@@ -19,14 +19,15 @@ import (
 	"sync"
 	"time"
 
+	"github.com/HomeDing/goding/internal/elements/registry"
+	"github.com/HomeDing/goding/internal/elements/volumeElement"
 	"github.com/HomeDing/goding/internal/global"
 	"github.com/HomeDing/goding/internal/http/verbose"
-
-	"github.com/HomeDing/goding/internal/elements"
 )
 
 var isStarted = false
 var quitChan = make(chan bool)
+var srv *http.Server
 
 // serve command parameters
 var serveFlags *flag.FlagSet
@@ -89,17 +90,48 @@ func Run(wg *sync.WaitGroup) error {
 
 	mux.Handle("GET /api", http.NotFoundHandler())
 
-	mux.HandleFunc("/api/state/", func(w http.ResponseWriter, r *http.Request) {
-		var v = elements.NewVolumeElement("main")
+	// mux.HandleFunc("GET /api/state/", func(w http.ResponseWriter, r *http.Request) {
+	// 	slog.Debug("GET /api/state/")
+	// 	var v = volumeElement.NewVolumeElement("main")
+	// 	var stateMap = map[string]map[string]string{}
+	// 	w.Header().Set("Content-Type", "application/json")
+	// 	stateMap[v.GetKey()] = v.State()
+	// 	json.NewEncoder(w).Encode(stateMap)
+	// })
 
-		var stateMap = map[string]map[string]string{}
+	mux.HandleFunc("GET /api/state/{t}/{id}", func(w http.ResponseWriter, r *http.Request) {
+		t := r.PathValue("t")
+		id := r.PathValue("id")
 
-		w.Header().Set("Content-Type", "application/json")
+		slog.Debug("GET /api/state/{t}/{id}", slog.String("t", t), slog.String("id", id))
 
-		stateMap[v.GetKey()] = v.State()
+		e := registry.Find(t, id)
+		if e == nil {
+			slog.Warn("element not found", slog.String("t", t), slog.String("id", id))
+			http.Error(w, "element not found", http.StatusNotFound)
+			return
+		}
 
-		json.NewEncoder(w).Encode(stateMap)
-	})
+		q := r.URL.Query()
+
+		if len(q) == 0 {
+			// no query parameters, return state as JSON
+			v := e.State()
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(v)
+			return
+		}
+
+		// slog.Debug("Query", slog.Any("q", q), slog.Any("q.len", len(q)))
+
+		for key, values := range q {
+			if len(values) > 0 {
+				value := values[0]
+				slog.Debug("Query", slog.String("key", key), slog.String("value", value))
+				e.Set(key, value)
+			}
+		}
+	}) // handleFunc 
 
 	if global.DevFlag {
 		// enable shutdown endpoint for development and debugging purposes
@@ -123,7 +155,7 @@ func Run(wg *sync.WaitGroup) error {
 	fmt.Fprintln(serveFlags.Output(), "Starting goding web server on http://localhost:"+fmt.Sprint(global.Port)+"/")
 
 	// Create a server instance
-	srv := &http.Server{
+	srv = &http.Server{
 		Addr:    ":" + fmt.Sprint(global.Port),
 		Handler: chain,
 	}
@@ -131,38 +163,31 @@ func Run(wg *sync.WaitGroup) error {
 	// Read https://www.codestudy.net/blog/how-to-stop-http-listenandserve/
 
 	go func() {
-		slog.Debug("serve.Starting web server...")
+		slog.Debug("serve web server starting ...")
 		defer wg.Done() // let main know we server is done
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatal("serve", slog.Any("serve.error", err))
 		}
+		slog.Debug("serve web server stopped.")
 	}()
 
-	slog.Debug("serve.wait...")
-
-	// wait for quit signal
-	<-quitChan
-
-	slog.Debug("serve.Shutdown...")
-
-	// Create a context with timeout to ensure shutdown completes
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	// 7. Shutdown the server
-	if err := srv.Shutdown(ctx); err != nil {
-		log.Fatalf("Server shutdown failed: %v", err)
-	}
-	// srv.Shutdown(context.TODO())
-	slog.Debug("serve.isDown.")
+	slog.Debug("serve Run() done.")
 
 	return nil
 }
 
 func Stop() {
 	slog.Debug("serve.Stop()")
-	if isStarted {
-		quitChan <- true
-		slog.Debug("serve.Stopped.")
+	if isStarted && srv != nil {
+		slog.Debug("serve Shutdown...")
+
+		// Create a context with timeout to ensure shutdown completes
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		// 7. Shutdown the server
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Fatalf("Server shutdown failed: %v", err)
+		}
 	}
 }
