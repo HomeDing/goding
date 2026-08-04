@@ -15,7 +15,7 @@ import (
 	"github.com/HomeDing/goding/cmd/help"
 	"github.com/HomeDing/goding/cmd/midi"
 	"github.com/HomeDing/goding/cmd/serve"
-	"github.com/HomeDing/goding/internal/elements/element"
+	"github.com/HomeDing/goding/internal/elements"
 	"github.com/HomeDing/goding/internal/elements/volumeElement"
 	"github.com/HomeDing/goding/internal/global"
 )
@@ -142,8 +142,8 @@ func loadConfig() {
 			if ok {
 				// Iterate elements in group
 				for elId, elRaw := range group {
-					slog.Debug("LoadConfig.create", "key", element.MakeKey(elType, elId))
-					var el element.Element
+					slog.Debug("LoadConfig.create", "key", elements.MakeKey(elType, elId))
+					var el elements.Element
 
 					// create element of type elType with id elId
 					if elType == "Volume" {

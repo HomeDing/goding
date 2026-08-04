@@ -7,7 +7,7 @@
 
 // The file provides the shared interface definitions used by element implementations.
 
-package element
+package elements
 
 // Element interface defines the common methods that all element types must implement.
 type Element interface {

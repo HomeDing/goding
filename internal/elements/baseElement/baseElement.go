@@ -9,7 +9,7 @@
 package baseElement
 
 import (
-	"github.com/HomeDing/goding/internal/elements/element"
+	"github.com/HomeDing/goding/internal/elements"
 	"github.com/HomeDing/goding/internal/elements/registry"
 )
 
@@ -41,7 +41,7 @@ func NewBaseElement(elType string, elId string) BaseElement {
 }
 
 func (e BaseElement) GetKey() string {
-	return element.MakeKey(e.elementType, e.elementID)
+	return elements.MakeKey(e.elementType, e.elementID)
 }
 
 func (e BaseElement) Get(key string) string {

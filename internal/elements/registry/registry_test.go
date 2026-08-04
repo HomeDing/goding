@@ -10,14 +10,14 @@ package registry
 import (
 	"testing"
 
-	"github.com/HomeDing/goding/internal/elements/types"
+	"github.com/HomeDing/goding/internal/elements"
 )
 
 func TestAddAndFindUsePointerIdentity(t *testing.T) {
-	elementRegistry = map[string]*types.Element{}
+	elementRegistry = map[string]elements.Element{}
 
-	el := &types.Element{Type: "lamp", Id: "lamp1", Config: map[string]string{}, Values: map[string]string{}}
-	add(el)
+	el := &testElement{key: elements.MakeKey("lamp", "lamp1")}
+	Register(el)
 
 	got := FindByKey(el.GetKey())
 	if got == nil {
@@ -27,4 +27,24 @@ func TestAddAndFindUsePointerIdentity(t *testing.T) {
 	if got != el {
 		t.Fatalf("expected registry to preserve pointer identity")
 	}
+}
+
+type testElement struct {
+	key string
+}
+
+func (e *testElement) GetKey() string {
+	return e.key
+}
+
+func (e *testElement) Get(key string) string {
+	return ""
+}
+
+func (e *testElement) Set(key, value string) bool {
+	return false
+}
+
+func (e *testElement) State() map[string]string {
+	return map[string]string{}
 }
