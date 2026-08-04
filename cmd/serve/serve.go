@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/HomeDing/goding/internal/elements/registry"
-	"github.com/HomeDing/goding/internal/elements/volumeElement"
 	"github.com/HomeDing/goding/internal/global"
 	"github.com/HomeDing/goding/internal/http/verbose"
 )
@@ -131,7 +130,7 @@ func Run(wg *sync.WaitGroup) error {
 				e.Set(key, value)
 			}
 		}
-	}) // handleFunc 
+	}) // handleFunc
 
 	if global.DevFlag {
 		// enable shutdown endpoint for development and debugging purposes
