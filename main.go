@@ -15,6 +15,7 @@ import (
 	"github.com/HomeDing/goding/cmd/help"
 	"github.com/HomeDing/goding/cmd/midi"
 	"github.com/HomeDing/goding/cmd/serve"
+	"github.com/HomeDing/goding/internal/common"
 	"github.com/HomeDing/goding/internal/elements"
 	"github.com/HomeDing/goding/internal/global"
 )
@@ -142,7 +143,7 @@ func loadConfig() {
 				// Iterate elements in group
 				for elId, elRaw := range group {
 					slog.Debug("LoadConfig.create", "key", elements.MakeKey(elType, elId))
-					var el elements.Element
+					var el common.Element
 
 					// create element of type elType with id elId
 					// TODO: implement a generic factory for element creation instead of hardcoding the types here.
