@@ -31,7 +31,7 @@ var srv *http.Server
 // serve command parameters
 var serveFlags *flag.FlagSet
 
-// Initialize the serve command and its flags in the init function, which is called before main.
+// Initialize the serve command and its flags in the Init function, which is called before main.
 // This allows us to set up the command and its flags before parsing the command-line arguments in main.
 func Init() {
 	slog.Debug("serve.Init()")

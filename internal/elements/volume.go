@@ -47,11 +47,6 @@ func NewVolumeElement(elementId string) *Volume {
 	return v
 } // NewVolumeElement()
 
-// Overwrite the New function to create a new VolumeElement instance with default configuration values.
-func New(elementId string) *Volume {
-	return NewVolumeElement(elementId)
-}
-
 // Set overrides the base element setter to validate volume-specific values and apply them to the system.
 func (e *Volume) Set(key, value string) bool {
 	slog.Debug("volume.set", "element", e.GetKey(), "key", key, "value", value)
@@ -144,8 +139,3 @@ func (e *Volume) applyCurrentValue() error {
 
 	return aev.SetMasterVolumeLevelScalar(scalar, nil)
 } // applyCurrentValue
-
-// register volume element type in the registry
-func init() {
-	NewVolumeElement("default")
-}

@@ -10,7 +10,7 @@
 <body>
     <h1>Goding</h1>
     <p>Welcome to the Goding web application!</p>
-    <h2>API Tests</h2>
+    <h2>API Tests Volume(volume/main)</h2>
     <ul>
         <li><a target="_blank" href="/api/state/volume/main">GET</a></li>
         <li><a target="_blank" href="/api/state/volume/main?value=25">25</a></li>
@@ -18,6 +18,15 @@
         <li><a target="_blank" href="/api/state/volume/main?value=200">200</a></li>
         <li><a target="_blank" href="/api/state/volume/main?value=-60">-60</a></li>
     </ul>
+
+    <input id="mainVol" type="range" style="zoom: 2" min="0" max="100">
+
+    <script>
+        var mvObj = document.querySelector('#mainVol')
+        mvObj.addEventListener('input', (evt) => {
+            fetch('/api/state/volume/main?value=' + mvObj.value)
+        })
+    </script>
 </body>
 
 </html>
