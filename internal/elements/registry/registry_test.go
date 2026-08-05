@@ -10,13 +10,13 @@ package registry
 import (
 	"testing"
 
-	"github.com/HomeDing/goding/internal/elements"
+	"github.com/HomeDing/goding/internal/common"
 )
 
 func TestAddAndFindUsePointerIdentity(t *testing.T) {
-	elementRegistry = map[string]elements.Element{}
+	elementRegistry = map[string]common.Element{}
 
-	el := &testElement{key: elements.MakeKey("lamp", "lamp1")}
+	el := &testElement{key: "lamp/lamp1"}
 	Register(el)
 
 	got := FindByKey(el.GetKey())

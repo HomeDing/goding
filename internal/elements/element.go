@@ -9,13 +9,10 @@
 
 package elements
 
+import "github.com/HomeDing/goding/internal/common"
+
 // Element interface defines the common methods that all element types must implement.
-type Element interface {
-	GetKey() string
-	Get(key string) string
-	Set(key string, value string) bool
-	State() map[string]string
-}
+type Element = common.Element
 
 type ElementCreator interface {
 	New(elType string, elId string) Element

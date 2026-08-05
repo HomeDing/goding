@@ -8,13 +8,13 @@
 // Package registry stores and retrieves element instances at runtime.
 package registry
 
-import "github.com/HomeDing/goding/internal/elements"
+import "github.com/HomeDing/goding/internal/common"
 
 // The element registry stores all configured elements at runtime.
-var elementRegistry = map[string]elements.Element{}
+var elementRegistry = map[string]common.Element{}
 
 // Register stores a new element instance by its unique key.
-func Register(e elements.Element) {
+func Register(e common.Element) {
 	if e == nil {
 		return
 	}
@@ -22,13 +22,13 @@ func Register(e elements.Element) {
 }
 
 // Find retrieves an element from the registry by its unique key.
-func Find(t string, id string) elements.Element {
-	k := elements.MakeKey(t, id)
+func Find(t string, id string) common.Element {
+	k := t + "/" + id
 	return FindByKey(k)
 }
 
 // Find retrieves an element from the registry by its unique key.
-func FindByKey(key string) elements.Element {
+func FindByKey(key string) common.Element {
 	if e, ok := elementRegistry[key]; ok {
 		return e
 	}

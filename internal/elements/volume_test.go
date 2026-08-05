@@ -5,7 +5,7 @@
 // This work is licensed under a BSD style license.
 // See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
 
-package volumeElement
+package elements
 
 import "testing"
 

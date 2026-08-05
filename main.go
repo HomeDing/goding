@@ -16,7 +16,6 @@ import (
 	"github.com/HomeDing/goding/cmd/midi"
 	"github.com/HomeDing/goding/cmd/serve"
 	"github.com/HomeDing/goding/internal/elements"
-	"github.com/HomeDing/goding/internal/elements/volumeElement"
 	"github.com/HomeDing/goding/internal/global"
 )
 
@@ -146,8 +145,9 @@ func loadConfig() {
 					var el elements.Element
 
 					// create element of type elType with id elId
+					// TODO: implement a generic factory for element creation instead of hardcoding the types here.
 					if elType == "Volume" {
-						el = volumeElement.NewVolumeElement(elId)
+						el = elements.NewVolumeElement(elId)
 					}
 					slog.Debug("LoadConfig.created:", slog.Any("element", el))
 

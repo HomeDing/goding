@@ -6,7 +6,7 @@
 // See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
 
 // Package elements contains implementations of UI/control elements used by GoDing.
-package volumeElement
+package elements
 
 import (
 	"fmt"
@@ -14,25 +14,22 @@ import (
 	"maps"
 	"strconv"
 
-  "github.com/HomeDing/goding/internal/elements/baseElement"
 	"github.com/HomeDing/goding/internal/elements/registry"
 	"github.com/MixyLabs/go-wca/pkg/wca"
 	"github.com/go-ole/go-ole"
 )
 
-type volumeElement struct {
-	baseElement.BaseElement
-	// baseElement.BaseElement
+type Volume struct {
+	Base
 	// shadow int values to avoid too much string conversion and parsing
 	minimum, maximum, value int
 	processName             string
 }
 
 // creates a new VolumeElement instance with default configuration values and registers it in the registry.
-func NewVolumeElement(elementId string) *volumeElement {
-	v := volumeElement{
-		BaseElement: baseElement.NewBaseElement("volume", elementId),
-		processName: "main"}
+func NewVolumeElement(elementId string) *Volume {
+	v := &Volume{
+		Base: NewBaseElement("volume", elementId)}
 
 	// set initial configuration parameters
 	v.Config["min"] = "0"
@@ -41,48 +38,47 @@ func NewVolumeElement(elementId string) *volumeElement {
 	// set initial runtime value
 	v.Values["value"] = "50"
 
-	// set shadow variables to avoid too much conversions
 	v.minimum = 0
 	v.maximum = 100
 	v.value = 50
+	v.processName = "main"
 
 	registry.Register(v)
-	return &v
-}
+	return v
+} // NewVolumeElement()
 
 // Overwrite the New function to create a new VolumeElement instance with default configuration values.
-func New(elementId string) *volumeElement {
+func New(elementId string) *Volume {
 	return NewVolumeElement(elementId)
 }
 
 // Set overrides the base element setter to validate volume-specific values and apply them to the system.
-func (e volumeElement) Set(key, value string) bool {
+func (e *Volume) Set(key, value string) bool {
 	slog.Debug("volume.set", "element", e.GetKey(), "key", key, "value", value)
 	var newValue int
 	var err error
 
 	if key == "value" || key == "min" || key == "max" {
-		// check for good formatted value
 		if newValue, err = strconv.Atoi(value); err != nil {
 			return false
 		}
 	}
 
-	changed := e.BaseElement.Set(key, value) // call the base Set method to handle known keys
+	// call the base Set method to handle known keys
+	changed := e.Base.Set(key, value)
 	if changed {
 		switch key {
 		case "value":
 
-			// constrain value to be within min and max and correct the Values map accordingly
+			// constrain the new value to the min/max range
 			if newValue < e.minimum {
 				newValue = e.minimum
-				e.BaseElement.Values["value"] = strconv.Itoa(newValue)
 			} else if newValue > e.maximum {
 				newValue = e.maximum
-				e.BaseElement.Values["value"] = strconv.Itoa(newValue)
 			}
 
 			e.value = newValue
+			e.Values["value"] = strconv.Itoa(newValue)
 			if err := e.applyCurrentValue(); err != nil {
 				slog.Warn("could not apply volume change", "element", e.GetKey(), "error", err)
 			}
@@ -95,18 +91,18 @@ func (e volumeElement) Set(key, value string) bool {
 	return changed
 }
 
-func (e *volumeElement) Loop() bool {
+func (e *Volume) Loop() bool {
 	return false
 }
 
-func (e *volumeElement) XState() map[string]string {
+func (e *Volume) XState() map[string]string {
 	res := map[string]string{}
 	maps.Copy(res, e.Config)
 	res["name"] = e.processName
 	return res
 }
 
-func (e *volumeElement) applyCurrentValue() error {
+func (e *Volume) applyCurrentValue() error {
 	valueText := e.Values["value"]
 	if valueText == "" {
 		return fmt.Errorf("volume value is not set")
