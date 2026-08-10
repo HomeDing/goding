@@ -55,12 +55,21 @@ For if statements the closing bracket will be the closing bracket of the `else` 
 
 ### Implementation Style
 
-With `if` statements this project prefers not to have long if statements and short else statements.
-Instead the if clause should be reversed so the short statement comes first and the else statement can be read in sight if the if clause.
+* With `if` statements this project prefers not to have long if statements and short
+  else statements.  
+  Instead the if clause should be reversed so the short statement comes first and the
+  else statement can be read in sight if the if clause.
 
-### Logging
+* All sourcecode files must have a "End" comment like as the last non-empty line like:
+  ```
+  // End.
+  ```
+
+### Logging and Output
 
 Use structured logging via `slog` for all logging and HTTP requests.
+
+Any other output must be written using the `fmt` package.
 
 
 ## Project Goals
