@@ -10,7 +10,11 @@ package common
 // Element defines the common methods that runtime element instances must implement.
 type Element interface {
 	GetKey() string
+	IsActive() bool
 	Get(key string) string
 	Set(key string, value string) bool
+	Start()
 	State() map[string]string
 }
+
+// End.

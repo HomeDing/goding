@@ -13,9 +13,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -46,9 +46,9 @@ func Init() {
 func Help() {
 	slog.Debug("serve.Help()")
 
-	fmt.Fprintln(serveFlags.Output(),
-		`
-goDing serve starts the local web server receiving actions from network clients.
+	fmt.Println()
+	fmt.Println(
+		`goDing serve starts the local web server receiving actions from network clients.
 to execute create HomeDing actions as defined in the configuration.
 
 Usage:
@@ -140,18 +140,14 @@ func Run(wg *sync.WaitGroup) error {
 		})
 	}
 
-	mux.HandleFunc("/task/{id}/", func(w http.ResponseWriter, r *http.Request) {
-		id := r.PathValue("id")
-		fmt.Fprintf(w, "handling task with id=%v\n", id)
-	})
-
 	if global.VerboseFlag {
+		// add verbose logging to the HTTP handler chain
 		chain = verbose.HttpLogging(mux)
 	} else {
 		chain = mux
 	}
 
-	fmt.Fprintln(serveFlags.Output(), "Starting goding web server on http://localhost:"+fmt.Sprint(global.Port)+"/")
+	fmt.Println("Starting goding web server on http://localhost:" + fmt.Sprint(global.Port) + "/")
 
 	// Create a server instance
 	srv = &http.Server{
@@ -165,7 +161,8 @@ func Run(wg *sync.WaitGroup) error {
 		slog.Debug("serve web server starting ...")
 		defer wg.Done() // let main know we server is done
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatal("serve", slog.Any("serve.error", err))
+			slog.Error("serve", slog.Any("serve.error", err))
+			os.Exit(-1)
 		}
 		slog.Debug("serve web server stopped.")
 	}()
@@ -186,7 +183,9 @@ func Stop() {
 
 		// 7. Shutdown the server
 		if err := srv.Shutdown(ctx); err != nil {
-			log.Fatalf("Server shutdown failed: %v", err)
+			slog.Error("Server shutdown failed", "errCode", err)
 		}
 	}
 }
+
+// End.

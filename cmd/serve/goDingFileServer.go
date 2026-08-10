@@ -9,7 +9,7 @@
 package serve
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -38,19 +38,24 @@ func GoDingFileServer(webFolder string) http.HandlerFunc {
 
 	if strings.Contains(webFolder, "..") ||
 		strings.Contains(webFolder, ":") {
-		log.Fatal("web folder parameter is invalid.")
+		slog.Error("web folder parameter is invalid.")
+		os.Exit(-1)
 	}
 
 	basePath, err := filepath.Abs(global.WebFolder)
 	if err != nil {
-		log.Fatal("web folder parameter is not a folder.")
+		slog.Error("web folder parameter is not a folder.")
+		os.Exit(-1)
 	}
 
 	stat, err := os.Stat(basePath)
 	if err != nil {
-		log.Fatal("web folder doesn't exist.")
+		slog.Error("web folder doesn't exist.")
+		os.Exit(-1)
+
 	} else if !stat.IsDir() {
-		log.Fatal("web folder parameter is not a folder.")
+		slog.Error("web folder parameter is not a folder.")
+		os.Exit(-1)
 	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -105,9 +110,11 @@ func GoDingFileServer(webFolder string) http.HandlerFunc {
 			path = indexPath
 		}
 
-		log.Print("using ", path)
+		slog.Info("http.serving", "file", path)
 
 		// Serve the file found
 		http.ServeFile(w, r, path)
 	}
 }
+
+// End.

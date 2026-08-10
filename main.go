@@ -3,10 +3,10 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"log/slog"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,6 +17,7 @@ import (
 	"github.com/HomeDing/goding/cmd/serve"
 	"github.com/HomeDing/goding/internal/common"
 	"github.com/HomeDing/goding/internal/elements"
+	"github.com/HomeDing/goding/internal/elements/registry"
 	"github.com/HomeDing/goding/internal/global"
 )
 
@@ -61,7 +62,8 @@ func runCommand(command string, args []string) {
 		midi.Run(&wg)
 
 	default:
-		log.Fatal("unknown command: " + command + ". Use 'goding help' for usage information.")
+		slog.Error("unknown command: " + command + ". Use 'goding help' for usage information.")
+		os.Exit(-1)
 	} // switch
 
 } // runCommand()
@@ -122,6 +124,12 @@ func loadConfig() {
 			"max": "100",
 			"value": "50"
 	  }
+	},
+	"midi": {
+	  "1" : {	
+	  	"message": "[14] CC 76",
+			"onMessage": "no-action"
+	  }
 	}
 }`
 
@@ -147,8 +155,11 @@ func loadConfig() {
 
 					// create element of type elType with id elId
 					// TODO: implement a generic factory for element creation instead of hardcoding the types here.
-					if elType == "Volume" {
+					switch strings.ToLower(elType) {
+					case "volume":
 						el = elements.NewVolumeElement(elId)
+					case "midi":
+						el = elements.NewMidiElement(elId)
 					}
 					slog.Debug("LoadConfig.created:", slog.Any("element", el))
 
@@ -159,7 +170,7 @@ func loadConfig() {
 							for attr, attrRaw := range single {
 								slog.Debug("LoadConfig.set", slog.String("attr", attr), slog.Any("attrRaw", attrRaw))
 
-								el.Set(attr, attrRaw.(string))
+								el.Set(strings.ToLower(attr), attrRaw.(string))
 
 								// attributes, ok := elRaw.(map[string]any)
 
@@ -178,13 +189,17 @@ func loadConfig() {
 // Main entry point for the GoDing application.
 // It initializes the application, parses command-line arguments, and runs the specified commands.
 func main() {
+	// Set the default log level to warning to reduce verbosity in normal operation.
+	slog.SetLogLoggerLevel(slog.LevelInfo)
+
 	// Enable the following lines to get debug output from the start
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 	global.VerboseFlag = true
 
-	slog.Debug("main.main()")
 	var quitChan = make(chan os.Signal, 1)
 	args := os.Args
+
+	slog.Info("GoDing starting...")
 
 	help.Init()
 	serve.Init()
@@ -204,7 +219,12 @@ func main() {
 	} else {
 		parseAndRun(args[1:])
 
+		if global.VerboseFlag {
+			slog.SetLogLoggerLevel(slog.LevelDebug)
+		}
+
 		loadConfig()
+		registry.StartElements()
 
 		signal.Notify(quitChan, syscall.SIGINT, syscall.SIGTERM)
 
@@ -229,3 +249,5 @@ func main() {
 	}
 
 }
+
+// End.

@@ -15,7 +15,6 @@ package midi
 import (
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"strings"
 	"sync"
@@ -69,6 +68,11 @@ var actionsRegistry map[string]string = make(map[string]string) // map of midi m
 // midi command parameters
 var midiFlags *flag.FlagSet
 
+// normalize the midi message to be used as a key for the registered actions.
+func normalizeMidiMessage(midiMsg string) string {
+	return strings.ToLower(strings.ReplaceAll(midiMsg, " ", ""))
+}
+
 // Initialize the midi command and its flags in the init function, which is called before main.
 // This allows us to set up the command and its flags before parsing the command-line arguments in main.
 func Init() {
@@ -85,19 +89,17 @@ func Init() {
 func Help() {
 	slog.Debug("Midi.Help()")
 
-	fmt.Fprintln(midiFlags.Output(),
-		`
-goDing midi starts the midi listener receiving midi messages
+	fmt.Println()
+	fmt.Println(
+		`goDing midi starts the midi listener receiving midi messages
 to execute create HomeDing actions as defined in the configuration.
 
 Usage:
 
   goding midi [parameters]`)
-
-	fmt.Fprintln(midiFlags.Output())
-
+	fmt.Println()
 	midiFlags.Usage()
-}
+} // Help()
 
 // ParseArguments parses the command-line arguments and sets the global variables accordingly.
 // It returns a boolean indicating whether the serve command was invoked and an error if there was an issue with parsing the arguments.
@@ -106,17 +108,17 @@ func ParseArguments(args []string) (bool, error) {
 
 	midiFlags.Parse(args)
 	return true, nil
-}
+} // ParseArguments()
 
 // Register a action to be created on a specific signal.
 // The action is a string that represents the action to be taken when the signal is received. The signal is a string that represents the signal to listen for. The action can be a command to execute, a function to call, or any other action that can be represented as a string.
 func Register(midiMsg string, action string) {
 	// normalize the midiMsg to be used as a key for the registered actions.
-	midiMsg = strings.ToLower(strings.ReplaceAll(midiMsg, " ", ""))
+	midiMsg = normalizeMidiMessage(midiMsg)
 
 	slog.Debug("midi.register", slog.String("midiMsg", midiMsg), slog.String("action", action))
 	actionsRegistry[midiMsg] = action
-}
+} // Register()
 
 // Go Routine to listen for MIDI events and process them using registered handlers
 func listen(quitChan chan bool, wg *sync.WaitGroup) error {
@@ -155,28 +157,22 @@ func listen(quitChan chan bool, wg *sync.WaitGroup) error {
 
 			default:
 				// ignore !
-				// fmt.Printf("midi.DEFAULT channel\n")
-				// slog.Debug("midi", slog.Any("msg", msg))
-
 			}
 
-			// if global.VerboseFlag && len(midiMsg) > 0 {
-			// 	log.Println("MIDI", midiMsg, value)
-			// }
-
-			// normalize the midiMsg to be used as a key for the registered actions.
-			midiMsg = strings.ToLower(strings.ReplaceAll(midiMsg, " ", ""))
+			midiMsg = normalizeMidiMessage(midiMsg)
 
 			var a = actionsRegistry[midiMsg]
 			if len(a) > 0 {
-				log.Printf("midi.action %s,%v => %s", midiMsg, value, a)
+				slog.Info("midi.action", "message", midiMsg, "value", value, "action", a)
 			} else {
-				log.Printf("midi.noaction %s,%v", midiMsg, value)
+				slog.Info("midi.action", "message", midiMsg, "value", value)
 			}
-		}) // , midi.UseSysEx()
+		}) // midi.ListenTo
+
+		// midi.UseSysEx() not required.
 
 		if err != nil {
-			fmt.Printf("ERROR: %s\n", err)
+			slog.Error("midi.listen", "error", err)
 			return (nil)
 		}
 
@@ -197,12 +193,8 @@ func Run(wg *sync.WaitGroup) error {
 	slog.Debug("midi.Run()")
 
 	// start a goroutine to listen to midi events
-
-	// test some Registers
-	Register("[11] ON E3", "Pad 1")
-	Register("[14] CC 77", "volume change")
-
 	isStarted = true
+	slog.Info("Listening for midi messages...")
 	wg.Add(1)
 	go listen(quitChan, wg)
 
@@ -337,3 +329,5 @@ func (ml *MIDIListener) listenLoop(inputPort int) {
 
 	stop()
 }
+
+// End.

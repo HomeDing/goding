@@ -43,8 +43,9 @@ func Init() {
 func Help() {
 	slog.Debug("Help.Help()")
 
-	fmt.Fprintln(helpFlags.Output(), `
-Usage:
+	fmt.Println()
+	fmt.Println(
+		`Usage:
 
   goding <command> [parameters]
 
@@ -79,9 +80,9 @@ func ParseArguments(args []string) (bool, error) {
 func Run(wg *sync.WaitGroup) error {
 	slog.Debug("help.Run()", slog.String("command", helpCommand))
 
-	fmt.Fprintln(helpFlags.Output(),
-		`
-goDing is a Windows service application to use a Windows machine
+	fmt.Println()
+	fmt.Println(
+		`goDing is a Windows service application to use a Windows machine
 to execute HomeDing compatible actions triggered by call to a web server and by midi messages.
   `)
 
@@ -101,3 +102,5 @@ to execute HomeDing compatible actions triggered by call to a web server and by 
 func Stop() {
 	slog.Debug("help.Stop()")
 } // Stop()
+
+// End.

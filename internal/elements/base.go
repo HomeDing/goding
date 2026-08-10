@@ -7,6 +7,10 @@
 
 package elements
 
+import (
+	"log/slog"
+)
+
 // Base provides the common behaviors shared by element implementations.
 type Base struct {
 	// Type of the element, e.g., "Volume", "Temp", etc. will never be changed after creation.
@@ -14,6 +18,9 @@ type Base struct {
 
 	// ID of the element, e.g., "main", "0", etc. will never be changed after creation.
 	elementID string
+
+	// activated state
+	isActive bool
 
 	// Config holds the configuration values for the element, which can be set and retrieved.
 	Config map[string]string
@@ -26,14 +33,20 @@ func NewBaseElement(elType string, elId string) Base {
 	this := Base{
 		elementType: elType,
 		elementID:   elId,
+		isActive:    false,
 		Config:      map[string]string{},
 		Values:      map[string]string{},
 	}
+	this.Config["active"] = "0"
 	return this
 }
 
 func (e Base) GetKey() string {
 	return MakeKey(e.elementType, e.elementID)
+}
+
+func (e Base) IsActive() bool {
+	return e.isActive
 }
 
 func (e Base) Get(key string) string {
@@ -49,6 +62,7 @@ func (e Base) Get(key string) string {
 // Set stores a configuration or value for the element.
 // Returns true if the value was changed, false otherwise.
 // This function will only change known configuration or value keys. Unknown keys will be ignored and return false.
+// The keys are case-sensitive and must be passed as lowercase.
 func (e Base) Set(key, value string) bool {
 	if oldValue, ok := e.Config[key]; ok {
 		if value != oldValue {
@@ -66,6 +80,13 @@ func (e Base) Set(key, value string) bool {
 	return false
 }
 
+func (e Base) Start() {
+	slog.Debug("base.start", "element", e.GetKey())
+	// Base element does not have any specific start behavior.
+	e.isActive = true
+	e.Config["active"] = "1"
+}
+
 func (e Base) Loop() bool {
 	return false
 }
@@ -73,3 +94,5 @@ func (e Base) Loop() bool {
 func (e Base) State() map[string]string {
 	return e.Values
 }
+
+// End.

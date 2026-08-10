@@ -17,12 +17,19 @@ func (e *testElement) GetKey() string {
 	return e.key
 }
 
+func (e *testElement) IsActive() bool {
+	return false
+}
+
 func (e *testElement) Get(key string) string {
 	return ""
 }
 
 func (e *testElement) Set(key, value string) bool {
 	return false
+}
+
+func (e *testElement) Start() {
 }
 
 func (e *testElement) State() map[string]string {
@@ -37,3 +44,5 @@ func TestElementInterfaceCanBeImplemented(t *testing.T) {
 		t.Fatalf("expected key %q, got %q", "demo/item", got)
 	}
 }
+
+// End.

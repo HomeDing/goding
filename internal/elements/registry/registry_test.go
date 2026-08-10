@@ -13,21 +13,7 @@ import (
 	"github.com/HomeDing/goding/internal/common"
 )
 
-func TestAddAndFindUsePointerIdentity(t *testing.T) {
-	elementRegistry = map[string]common.Element{}
-
-	el := &testElement{key: "lamp/lamp1"}
-	Register(el)
-
-	got := FindByKey(el.GetKey())
-	if got == nil {
-		t.Fatal("expected element to be found")
-	}
-
-	if got != el {
-		t.Fatalf("expected registry to preserve pointer identity")
-	}
-}
+// Define a testElement struct that implements the common.Element interface for testing purposes.
 
 type testElement struct {
 	key string
@@ -35,6 +21,10 @@ type testElement struct {
 
 func (e *testElement) GetKey() string {
 	return e.key
+}
+
+func (e *testElement) IsActive() bool {
+	return false
 }
 
 func (e *testElement) Get(key string) string {
@@ -45,6 +35,35 @@ func (e *testElement) Set(key, value string) bool {
 	return false
 }
 
+func (e *testElement) Start() {
+}
+
 func (e *testElement) State() map[string]string {
 	return map[string]string{}
 }
+
+// ===== Test Cases =====
+
+func TestAddAndFindUsePointerIdentity(t *testing.T) {
+	elementRegistry = map[string]common.Element{}
+
+	el := &testElement{key: "lamp/lamp1"}
+	Register(el)
+
+	got1 := FindByKey(el.GetKey())
+	if got1 == nil {
+		t.Fatal("expected element to be found")
+	}
+
+	if got1 != el {
+		t.Fatalf("expected registry to preserve pointer identity")
+	}
+
+	got2 := FindByKey("lamp/nonexistent")
+	if got2 != nil {
+		t.Fatal("expected unregistered element was found")
+	}
+
+}
+
+// End.

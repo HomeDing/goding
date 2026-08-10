@@ -61,7 +61,8 @@ For if statements the closing bracket will be the closing bracket of the `else` 
   else statement can be read in sight if the if clause.
 
 * All sourcecode files must have a "End" comment like as the last non-empty line like:
-  ```
+
+  ``` go
   // End.
   ```
 
@@ -133,8 +134,8 @@ the application. Here the commandline parsing is implemented and the required co
   * If no subcommand is provided, it defaults to serve.
   * Otherwise, it uses the first argument as the selected command, such as help or serve.
 * Before dispatching, it parses the command-specific arguments:
-  * help.ParseArguments(os.Args[2:]) handles help-related arguments.
-  * serve.ParseArguments(os.Args[2:]) parses the flags for the server command.
+  * help.ParseArguments(...) handles help-related arguments.
+  * serve.ParseArguments(...) handles flags for the server command.
 * The application then applies logging configuration based on the global verbose flag,
   adjusting the log level before execution.
 * Finally, it calls the appropriate command runner:
@@ -170,21 +171,34 @@ The project uses Go's standard library logging via `slog` rather than third-part
 logging packages. Logging is implemented in a lightweight, structured way across
 startup, HTTP serving, and MIDI handling.
 
+* The default logging level is set to `LevelWarn` so all serious warnings
+  and the errors will be added to the logging output.
+
 * Startup and command flow in `main.go` configure the logging level from the `--verbose`
   flag. In normal mode, the app logs at warning level and above; in verbose mode, it
   enables debug-level output.
-* The serve command in `cmd/serve/serve.go` exposes the `--verbose` option and applies
-  request logging to the HTTP server.
-* HTTP request logging is handled by the middleware in
-  `internal/http/verbose/verbose.go`, which records the request method, path, content
+
+* The commands expose the `--verbose` option to change the logging level to `LevelDebug`
+  so info and debug messages will be created too.
+
+* HTTP request logging is also enabled using the `serve --verbose` option.  
+  Logging is handled by the middleware in `internal/http/verbose/verbose.go`,
+  which records the request method, path, content
   type, duration, and emits an `info` log entry for each request.
+
 * MIDI-related events in `internal/midihandler/listener.go` use structured logs for
   lifecycle events such as starting/stopping the listener, registering handlers, and
   reporting errors or warnings.
+
 * The project’s logging practice is to keep logs simple, structured, and
   dependency-light: use `slog` with key/value fields, choose appropriate levels
   (`Debug`, `Info`, `Warn`, `Error`), and avoid ad hoc plain-text logging where
   structured context is useful.
+
+* All output MUST be created using the `slog` package.
+
+* In the Help() function of the cmd modules the output MUST be written using  
+  `fmt.Println(...)`.
 
 ### Further development needed
 

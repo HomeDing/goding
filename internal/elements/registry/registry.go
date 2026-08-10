@@ -35,4 +35,11 @@ func FindByKey(key string) common.Element {
 	return nil
 }
 
+// Start all registered elements by calling their Start() method.
+func StartElements() {
+	for _, e := range elementRegistry {
+		e.Start()
+	}
+}
+
 // End
