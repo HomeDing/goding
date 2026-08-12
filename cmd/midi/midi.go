@@ -218,15 +218,6 @@ func List() error {
 	return nil
 }
 
-// func FindInPort(name string) (drivers.In, error)
-
-//   var ml = GetInstance()
-
-// 	ml.Start()
-
-// 	return nil
-// }
-
 // GetInstance returns the singleton MIDIListener instance
 func GetInstance() *MIDIListener {
 	once.Do(func() {
