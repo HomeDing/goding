@@ -8,6 +8,6 @@ require (
 	gitlab.com/gomidi/midi/v2 v2.3.24
 )
 
-require golang.org/x/sys v0.32.0 // indirect
+require golang.org/x/sys v0.47.0 // indirect
 
 replace github.com/MixyLabs/go-wca => github.com/diegosz/go-wca v0.5.1

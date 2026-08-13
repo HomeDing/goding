@@ -24,7 +24,8 @@ run:
 	go run $(PKG)
 
 clean:
-	-rm -f $(BINARY)
+	go clean 
+	del $(BINARY)
 
 help:
 	$(info Usage: make [target])

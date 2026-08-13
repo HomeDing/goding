@@ -12,6 +12,7 @@ package audiocontrol
 import (
 	"errors"
 	"log/slog"
+	"runtime"
 	"unsafe"
 
 	"github.com/MixyLabs/go-wca/pkg/wca"
@@ -21,11 +22,16 @@ import (
 // The Device implements a struct representing the current output device
 type Device struct {
 	// Sessions []*Session
-	mmd *wca.IMMDevice
-	aev *wca.IAudioEndpointVolume
-	ps  *wca.IPropertyStore
+	oleInit bool
+	mmde    *wca.IMMDeviceEnumerator
+	mmd     *wca.IMMDevice
+	aev     *wca.IAudioEndpointVolume
+	ps      *wca.IPropertyStore
 }
 
+// Release releases all underlying COM and Windows resources held by the
+// Device. It is safe to call Release multiple times.
+// Clean up all OLE and Windows resources when Device is no longer needed.
 func (d *Device) Release() {
 	if d.ps != nil {
 		d.ps.Release()
@@ -36,10 +42,15 @@ func (d *Device) Release() {
 	if d.mmd != nil {
 		d.mmd.Release()
 	}
-	ole.CoUninitialize()
+	if d.mmde != nil {
+		d.mmde.Release()
+	}
+	if d.oleInit == true {
+		ole.CoUninitialize()
+	}
 }
 
-// create the default Device
+// to create the default Device:
 // var dev *audiocontrol.Device
 // if dev, err = audiocontrol.GetDefaultDevice(); err != nil {
 // 	return
@@ -47,62 +58,52 @@ func (d *Device) Release() {
 // defer dev.Release()
 
 // the Device is effectively not created when returning a error
-func GetDefaultDevice() (*Device, error) {
-	var ret *Device
-	var mmde *wca.IMMDeviceEnumerator
-	// var err error
+// make sure old stuff is released finally even after beeing released explicitely.
+// See: https://victoriametrics.com/blog/go-runtime-finalizer-keepalive/
 
+// Create a default Device
+// As a fallback a finalizer is registered on the Device object to call Release().
+func GetDefaultDevice() (*Device, error) {
+	var d Device = Device{}
+
+	// register a finalizer so resources are cleaned up if the caller forgets
+	runtime.SetFinalizer(&d, (*Device).Release)
+
+	// initialize ole for this Device object
 	if err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED); err != nil {
 		return nil, err
 	}
+	d.oleInit = true
 
-	ret = &Device{}
-
-	// IMMDeviceEnumerator only needed locally, not stored in Device
-	if err := wca.CoCreateInstance(wca.CLSID_MMDeviceEnumerator, 0, wca.CLSCTX_ALL, wca.IID_IMMDeviceEnumerator, &mmde); err != nil {
-		ret.Release()
-		return nil, err
-	}
-	defer mmde.Release()
-
-	if err := mmde.GetDefaultAudioEndpoint(wca.ERender, wca.EConsole, &ret.mmd); err != nil {
-		ret.Release()
+	// IMMDeviceEnumerator in d.mmde
+	if err := wca.CoCreateInstance(wca.CLSID_MMDeviceEnumerator, 0, wca.CLSCTX_ALL, wca.IID_IMMDeviceEnumerator, &d.mmde); err != nil {
+		d.Release()
 		return nil, err
 	}
 
-	if err := ret.mmd.Activate(wca.IID_IAudioEndpointVolume, wca.CLSCTX_ALL, nil, &ret.aev); err != nil {
-		ret.Release()
+	// IMMDevice in d.mmd
+	if err := d.mmde.GetDefaultAudioEndpoint(wca.ERender, wca.EConsole, &d.mmd); err != nil {
+		d.Release()
 		return nil, err
 	}
 
-	return ret, nil
+	// IAudioEndpointVolume in d.aev
+	if err := d.mmd.Activate(wca.IID_IAudioEndpointVolume, wca.CLSCTX_ALL, nil, &d.aev); err != nil {
+		d.Release()
+		return nil, err
+	}
 
-	/*
-
-		if err = device.mmd.OpenPropertyStore(wca.STGM_READ, &device.ps); err != nil {
-			return nil, err
-		}
-
-		if err = device.mmd.Activate(wca.IID_IAudioEndpointVolume, wca.CLSCTX_ALL, nil, &device.aev); err != nil {
-			return nil, err
-		}
-
-		err = device.mmd.Activate(wca.IID_IAudioSessionManager2, wca.CLSCTX_ALL, nil, &sm)
-		if err != nil {
-			return nil, err
-		}
-
-		defer sm.Release()
-
-		device.Sessions, err = sessions(sm)
-		if err != nil {
-			return nil, err
-		}
-
-		return device, nil
-	*/
+	// finally return Device object ready to be used.
+	return &d, nil
 } // GetDefaultDevice()
 
+
+// GetMasterVolume returns the current master volume as an integer
+// percentage in the range [0,100].
+//
+// It reads the scalar volume from the underlying IAudioEndpointVolume
+// interface and converts it to a percentage. If the device's audio
+// endpoint volume interface is not available an error is returned.
 func (d *Device) GetMasterVolume() (int, error) {
 	var vol float32
 
@@ -119,6 +120,9 @@ func (d *Device) GetMasterVolume() (int, error) {
 
 // SetMasterVolume sets the master volume using `vol` interpreted relative to
 // the provided min/max range. `vol`, `min` and `max` are integer percentages.
+//
+// It uses vol as a scalar as percentage.
+// If the device's audio endpoint volume interface is not available an error is returned.
 func (d *Device) SetMasterVolume(vol, min, max int) error {
 	if d.aev == nil {
 		return errors.New("Device.aev is missing")
