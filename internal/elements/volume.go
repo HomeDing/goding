@@ -45,6 +45,7 @@ func NewVolumeElement(elementId string) *Volume {
 } // NewVolumeElement()
 
 // Set overrides the base element setter to validate volume-specific values and apply them to the system.
+// Do not fail when there is no real audio element found. The control nothing.
 func (e *Volume) Set(key, value string) bool {
 	slog.Debug("volume.set", "element", e.GetKey(), "key", key, "value", value)
 	var dev *audiocontrol.Device
@@ -70,14 +71,14 @@ func (e *Volume) Set(key, value string) bool {
 				newValue = e.maximum
 			}
 
-			if dev, err = audiocontrol.GetDefaultDevice(); err != nil {
-				return false
-			}
-			defer dev.Release()
+			dev, err = audiocontrol.GetDefaultDevice()
 
-			if err = dev.SetMasterVolume(newValue, e.minimum, e.maximum); err != nil {
-				slog.Error("volume.start", "err", err)
-				return false
+			if err == nil {
+				defer dev.Release()
+				if err = dev.SetMasterVolume(newValue, e.minimum, e.maximum); err != nil {
+					slog.Error("volume.start", "err", err)
+					return false
+				}
 			}
 			e.value = newValue
 			e.Values["value"] = strconv.Itoa(newValue)
