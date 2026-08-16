@@ -38,11 +38,29 @@ func NewVolumeElement(elementId string) *Volume {
 	v.minimum = 0
 	v.maximum = 100
 	v.value = 50
-	v.processName = "main"
+	v.processName = "default"
 
 	registry.Register(v)
 	return v
 } // NewVolumeElement()
+
+func (e *Volume) getDevice() (*audiocontrol.Device, error) {
+	var d *audiocontrol.Device
+	var err error
+
+	switch e.processName {
+	case "active":
+		fallthrough
+	case "default":
+		fallthrough
+	case "":
+		d, err = audiocontrol.GetDefaultDevice()
+	default:
+		// d, err = audiocontrol.GetDevice(e.processName)
+	}
+	return d, err
+
+}
 
 // Set overrides the base element setter to validate volume-specific values and apply them to the system.
 // Do not fail when there is no real audio element found. The control nothing.
@@ -71,17 +89,23 @@ func (e *Volume) Set(key, value string) bool {
 				newValue = e.maximum
 			}
 
-			dev, err = audiocontrol.GetDefaultDevice()
+			dev, err = e.getDevice()
+			slog.Info("volume.set", "device", dev)
 
 			if err == nil {
 				defer dev.Release()
 				if err = dev.SetMasterVolume(newValue, e.minimum, e.maximum); err != nil {
-					slog.Error("volume.start", "err", err)
+					slog.Error("volume.set", "err", err)
 					return false
 				}
 			}
 			e.value = newValue
 			e.Values["value"] = strconv.Itoa(newValue)
+
+			// ===== parameters
+
+		case "name":
+			e.processName = value
 
 		case "min":
 			e.minimum = newValue
@@ -107,7 +131,7 @@ func (e *Volume) Start() {
 		return
 	}
 
-	if dev, err = audiocontrol.GetDefaultDevice(); err != nil {
+	if dev, err = e.getDevice(); err != nil {
 		return
 	}
 	defer dev.Release()
@@ -124,6 +148,10 @@ func (e *Volume) Start() {
 	if err := audiocontrol.ListSessions(); err != nil {
 		slog.Warn("volume.start.list", "error", err)
 	}
+
+	s, err := audiocontrol.GetSession(dev, "*")
+	slog.Debug("volume.start", "session*", s, "err", err)
+	s.Release()
 
 }
 

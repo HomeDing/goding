@@ -21,32 +21,42 @@ import (
 
 // The Device implements a struct representing the current output device
 type Device struct {
+	id    string
+	name   string
+	active bool
+
+	volume int
+
 	// Sessions []*Session
 	oleInit bool
 	mmde    *wca.IMMDeviceEnumerator
 	mmd     *wca.IMMDevice
 	aev     *wca.IAudioEndpointVolume
-	ps      *wca.IPropertyStore
+	// ps      *wca.IPropertyStore
 }
+
+var commonDevice *Device = nil
 
 // Release releases all underlying COM and Windows resources held by the
 // Device. It is safe to call Release multiple times.
 // Clean up all OLE and Windows resources when Device is no longer needed.
 func (d *Device) Release() {
-	if d.ps != nil {
-		d.ps.Release()
-	}
+	slog.Info("Device.Release")
 	if d.aev != nil {
 		d.aev.Release()
+		d.aev = nil
 	}
 	if d.mmd != nil {
 		d.mmd.Release()
+		d.mmd = nil
 	}
 	if d.mmde != nil {
 		d.mmde.Release()
+		d.mmde = nil
 	}
 	if d.oleInit == true {
 		ole.CoUninitialize()
+		d.oleInit = false
 	}
 }
 
@@ -71,6 +81,7 @@ func GetDefaultDevice() (*Device, error) {
 
 	// initialize ole for this Device object
 	if err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED); err != nil {
+		ole.CoUninitialize() // even when an error has occurred
 		return nil, err
 	}
 	d.oleInit = true
@@ -93,10 +104,43 @@ func GetDefaultDevice() (*Device, error) {
 		return nil, err
 	}
 
+	// Process ID in d.did
+	d.mmd.GetId(&d.id)
+	slog.Info("Device.GetDefaultDevice", "deviceID", d.id)
+
+	// State as bool in d.active, https://learn.microsoft.com/en-us/windows/win32/api/mmdeviceapi/nf-mmdeviceapi-immdevice-getstate
+	var stat uint32
+	d.mmd.GetState(&stat)
+	slog.Info("Device.GetDefaultDevice", "stat", stat)
+	d.active = (stat == 1)
+
+	var ps *wca.IPropertyStore
+	if err := d.mmd.OpenPropertyStore(wca.STGM_READ, &ps); err != nil {
+		d.Release()
+		return nil, err
+	}
+	defer ps.Release()
+
+	var pv wca.PROPVARIANT
+	if err := ps.GetValue(&wca.PKEY_DeviceInterface_FriendlyName, &pv); err != nil {
+		// if err := ps.GetValue(&wca.PKEY_Device_FriendlyName, &pv); err != nil {
+		// if err := ps.GetValue(&wca.PKEY_Device_DeviceDesc, &pv); err != nil {
+		d.Release()
+		return nil, err
+	}
+	d.name = pv.String()
+	slog.Info("Device.GetDefaultDevice", "return", d)
+
+	var vol float32
+	if err := d.aev.GetMasterVolumeLevelScalar(&vol); err != nil {
+		d.Release()
+		return nil, err
+	}
+	d.volume = int(vol * 100)
+
 	// finally return Device object ready to be used.
 	return &d, nil
 } // GetDefaultDevice()
-
 
 // GetMasterVolume returns the current master volume as an integer
 // percentage in the range [0,100].
@@ -151,6 +195,8 @@ func ListSessions() error {
 		return err
 	}
 	defer mmde.Release()
+
+	// mmde.EnumAudioEndpoints()
 
 	var device2 *wca.IMMDevice
 	if err := mmde.GetDefaultAudioEndpoint(wca.ERender, wca.EConsole, &device2); err != nil {
