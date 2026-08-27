@@ -85,6 +85,12 @@ func Run(wg *sync.WaitGroup) error {
 	// use extended FileServer-Handler for static files
 	mux.Handle("/", GoDingFileServer(global.WebFolder))
 
+	// List all existing devices in the system
+	mux.Handle("GET /api/devices", HandleListDevices())
+
+	// List all existing devices in the system
+	mux.Handle("GET /api/sessions", HandleListSessions())
+
 	// mux.HandleFunc("GET /api/state", api.HandleStatus)
 
 	mux.Handle("GET /api", http.NotFoundHandler())

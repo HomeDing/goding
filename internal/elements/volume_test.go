@@ -41,8 +41,8 @@ func TestVolumeElementSet(t *testing.T) {
 		t.Fatalf("expected Values value %q after Set, got %q", "75", got)
 	}
 
-	if ok := volume.Set("value", "75"); ok {
-		t.Fatal("expected Set to return false when value is unchanged")
+	if ok := volume.Set("value", "75"); !ok {
+		t.Fatal("expected Set to return true even when value is unchanged")
 	}
 
 	if ok := volume.Set("value", "500"); !ok {

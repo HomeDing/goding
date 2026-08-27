@@ -10,27 +10,57 @@ package elements
 
 import (
 	"log/slog"
-	"maps"
 	"strconv"
+	"strings"
 
-	"github.com/HomeDing/goding/internal/audiocontrol"
+	"github.com/HomeDing/goding/internal/audio"
 	"github.com/HomeDing/goding/internal/elements/registry"
 )
 
+// The Volume element exists for controlling the volume of audio endpoints
+// like speakers or applications
 type Volume struct {
 	Base
 	// shadow int values to avoid too much string conversion and parsing
 	minimum, maximum, value int
-	processName             string
+	et                      audio.EndpointType
+	epName                  string
+	device                  *audio.DeviceInfo
 }
 
-// creates a new VolumeElement instance with default configuration values and registers it in the registry.
+// find the endpoint for one of the pre-defined keys from a textual input
+// name is already in clean state (lowercase etc.)
+// func scanEndpointKnownKey(name string) (uint32, error) {
+// 	switch {
+// 	case name[0:3] == "con":
+// 		return wca.EConsole, nil
+// 	case name[0:3] == "com":
+// 		return wca.ECommunications, nil
+// 	case name[0:3] == "mul":
+// 		return wca.EMultimedia, nil
+// 	}
+// 	return 0, errors.New("Unknown endpoint")
+// } // scanEndpointKnownKey()
+
+// Create a new VolumeElement instance with default configuration values and registers it in the registry.
+//
+// The endpoint to be controlled is defined by the "endpoint" parameter (default out:con)
+// as a string with colon separated elements (no space) like:
+// [out|in]... : [con|com|mul]... or
+// [app]...: `application` name
+// [win]... : [top]
+
+// "out[put]:con[sole]" -- the current output device for Games, system notification sounds and voice commands
+// "out[put]:com[munication]" -- the current output device for voice communications.
+// "out[put]:mul[timedia]" -- the current output device for Music, movies, narration, and live music recording.
+// "in[put]:..."
 func NewVolumeElement(elementId string) *Volume {
 	v := &Volume{Base: NewBaseElement("volume", elementId)}
 
-	// set initial configuration parameters
+	// set initial / default configuration parameters
 	v.Config["min"] = "0"
 	v.Config["max"] = "100"
+	v.Config["endpoint"] = "out:con"
 
 	// set initial runtime value
 	v.Values["value"] = "50"
@@ -38,35 +68,91 @@ func NewVolumeElement(elementId string) *Volume {
 	v.minimum = 0
 	v.maximum = 100
 	v.value = 50
-	v.processName = "default"
 
 	registry.Register(v)
 	return v
 } // NewVolumeElement()
 
-func (e *Volume) getDevice() (*audiocontrol.Device, error) {
-	var d *audiocontrol.Device
+// ===== private functions =====
+
+// Reformat the endpoint type and name combined string by removing extra characters and normalize
+// Valid endpoint names:
+//   - out:console, output:communication, output:multimedia
+//   - out:con, out:com, out:mul
+//   - out.con, out-com
+//
+// scanEndpointName returns the 2 parts type and name as lowercase 3-characters
+//
+// "out[put]:con[sole]" -- the current output device for Games, system notification sounds and voice commands
+// "out[put]:com[munication]" -- the current output device for voice communications.
+// "out[put]:mul[timedia]" -- the current output device for Music, movies, narration, and live music recording.
+// "in[put]:..."
+func scanEndpointName(name string) (audio.EndpointType, string, error) {
+	var err error
+	var epType audio.EndpointType
+
+	epts, epName, _ := strings.Cut(name, ":")
+	if epType, err = audio.ScanEndpointType(epts); err == nil {
+		// accept alternate names
+		switch epName {
+		case "main":
+			fallthrough
+		case "console":
+			epName = "con"
+		}
+		return epType, epName, nil
+	}
+	return audio.Output, "", err
+} // scanEndpointName()
+
+// Get the deviceInfo when controlling a input or output device
+func (e *Volume) getDeviceInfo() *audio.DeviceInfo {
+	var ret *audio.DeviceInfo
 	var err error
 
-	switch e.processName {
-	case "active":
+	switch e.et {
+	case audio.Input:
 		fallthrough
-	case "default":
-		fallthrough
-	case "":
-		d, err = audiocontrol.GetDefaultDevice()
-	default:
-		// d, err = audiocontrol.GetDevice(e.processName)
+	case audio.Output:
+		if e.epName == "con" {
+			ret, err = audio.GetDefaultDevice(e.et)
+		} else {
+			ret, err = audio.FindDevice(e.et, e.epName)
+		}
+		if err == nil {
+			e.device = ret
+			return ret
+		}
 	}
-	return d, err
+	return nil
+} // getDeviceInfo()
 
-}
+// Get the current volume, fail without error returning 0
+func (e *Volume) getVolume() int {
+	slog.Debug("volume.getVolume")
+
+	di := e.getDeviceInfo()
+	if di != nil {
+		vol, _ := di.GetVolume()
+		return vol
+	}
+	return 0
+} // getVolume()
+
+// Set the volume, fail without error
+func (e *Volume) setVolume(value int) {
+	slog.Debug("volume.setVolume", "value", value)
+
+	di := e.getDeviceInfo()
+	if di != nil {
+		di.SetVolume(value)
+	}
+} // setVolume()
 
 // Set overrides the base element setter to validate volume-specific values and apply them to the system.
 // Do not fail when there is no real audio element found. The control nothing.
 func (e *Volume) Set(key, value string) bool {
 	slog.Debug("volume.set", "element", e.GetKey(), "key", key, "value", value)
-	var dev *audiocontrol.Device
 	var err error
 	var newValue int
 
@@ -76,10 +162,12 @@ func (e *Volume) Set(key, value string) bool {
 		}
 	}
 
-	// call the base Set method to handle known keys
-	changed := e.Base.Set(key, value)
-	if changed {
+	// call the base Set method to handle only set requests for known keys.
+	if changed := e.Base.Set(key, value); changed {
+
 		switch key {
+		case "volume":
+			fallthrough
 		case "value":
 
 			// constrain the new value to the min/max range
@@ -89,31 +177,28 @@ func (e *Volume) Set(key, value string) bool {
 				newValue = e.maximum
 			}
 
-			dev, err = e.getDevice()
-			slog.Info("volume.set", "device", dev)
-
-			if err == nil {
-				defer dev.Release()
-				if err = dev.SetMasterVolume(newValue, e.minimum, e.maximum); err != nil {
-					slog.Error("volume.set", "err", err)
-					return false
-				}
+			if e.isActive {
+				e.setVolume(newValue)
 			}
 			e.value = newValue
 			e.Values["value"] = strconv.Itoa(newValue)
 
+		case "mute":
+
 			// ===== parameters
 
-		case "name":
-			e.processName = value
+		case "endpoint":
+			e.Config["endpoint"] = audio.CleanEndpointName(value)
+			e.et, e.epName, err = scanEndpointName(e.Config["endpoint"])
 
 		case "min":
 			e.minimum = newValue
 		case "max":
 			e.maximum = newValue
 		}
+		return true
 	}
-	return changed
+	return false
 }
 
 func (e *Volume) Loop() bool {
@@ -121,45 +206,25 @@ func (e *Volume) Loop() bool {
 }
 
 func (e *Volume) Start() {
-	var dev *audiocontrol.Device
-	var err error
-	var vol int
-
 	// check parameters to be useful
 	if e.maximum < e.minimum {
 		slog.Error("volume.start Bad range min...max", "min", e.minimum, "max", e.maximum)
 		return
 	}
 
-	if dev, err = e.getDevice(); err != nil {
-		return
-	}
-	defer dev.Release()
+	e.Base.Start()
 
-	if vol, err = dev.GetMasterVolume(); err != nil {
-		slog.Error("volume.start", "err", err)
-		return
-	}
-
-	slog.Debug("volume.start", "currentVolume", vol)
-	e.value = vol
-	e.Values["value"] = strconv.Itoa(vol)
-
-	if err := audiocontrol.ListSessions(); err != nil {
-		slog.Warn("volume.start.list", "error", err)
-	}
-
-	s, err := audiocontrol.GetSession(dev, "*")
-	slog.Debug("volume.start", "session*", s, "err", err)
-	s.Release()
-
+	e.value = e.getVolume()
+	e.Values["value"] = strconv.Itoa(e.value)
+	slog.Debug("volume.start", "currentVolume", e.value)
 }
 
-func (e *Volume) XState() map[string]string {
-	res := map[string]string{}
-	maps.Copy(res, e.Config)
-	res["name"] = e.processName
-	return res
-}
+// no extra code for state needed.
+// func (e *Volume) State() map[string]string {
+// 	res := map[string]string{}
+// 	maps.Copy(res, e.Config)
+// 	res["name"] = e.name
+// 	return res
+// }
 
 // End.

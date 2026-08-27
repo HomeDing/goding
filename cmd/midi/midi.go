@@ -16,10 +16,12 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	actionQueue "github.com/HomeDing/goding/internal/actionqueue"
 	"github.com/HomeDing/goding/internal/global"
 
 	"gitlab.com/gomidi/midi/v2"
@@ -164,6 +166,9 @@ func listen(quitChan chan bool, wg *sync.WaitGroup) error {
 			var a = actionsRegistry[midiMsg]
 			if len(a) > 0 {
 				slog.Info("midi.action", "message", midiMsg, "value", value, "action", a)
+				a = strings.ReplaceAll(a, "$v", strconv.Itoa(int(value)))
+				actionQueue.DispatchNow(a)
+
 			} else {
 				slog.Info("midi.action", "message", midiMsg, "value", value)
 			}

@@ -42,8 +42,8 @@ func TestBaseElementSetTracksKnownKeys(t *testing.T) {
 		t.Fatalf("expected Get to return %q, got %q", "desk", got)
 	}
 
-	if ok := el.Set("name", "desk"); ok {
-		t.Fatal("expected Set to return false when unchanged")
+	if ok := el.Set("name", "desk"); !ok {
+		t.Fatal("expected Set to return true even when unchanged")
 	}
 
 	el.Values["level"] = "5"

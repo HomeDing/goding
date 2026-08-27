@@ -9,7 +9,11 @@
 package actionQueue
 
 import (
+	"log/slog"
+	"strings"
 	"sync"
+
+	"github.com/HomeDing/goding/internal/elements/registry"
 )
 
 // Package-level internal state for the action queue.
@@ -58,4 +62,35 @@ func GetNext() (string, bool) {
 	queue = queue[1:]
 
 	return action, true
+}
+
+// action : type/id?key=value
+func DispatchNow(action string) {
+	slog.Debug("DispatchNow", slog.String("action", action))
+	var action1, action2 string
+	// var err error
+	var found bool
+
+	action1, action2, found = strings.Cut(action, "?")
+	if !found {
+		return
+	}
+
+	eType, eID, found := strings.Cut(action1, "/")
+	if !found {
+		return
+	}
+
+	e := registry.Find(eType, eID)
+	if e == nil {
+		slog.Warn("element not found", slog.String("t", eType), slog.String("id", eID))
+		return
+	}
+
+	if len(action2) > 0 {
+		aKey, aValue, found := strings.Cut(action2, "=")
+		if found {
+			e.Set(aKey, aValue)
+		}
+	}
 }

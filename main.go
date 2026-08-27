@@ -122,13 +122,18 @@ func loadConfig() {
 	  "main" : {	
 	  	"min": "0",
 			"max": "100",
+			"endpoint": "out:con",
 			"value": "50"
 	  }
 	},
 	"midi": {
 	  "1" : {	
 	  	"message": "[14] CC 76",
-			"onMessage": "no-action"
+			"onMessage": "volume/trdo?value=$v"
+	  },
+	  "main" : {	
+	  	"message": "[14] CC 77",
+			"onMessage": "volume/main?value=$v"
 	  }
 	}
 }`

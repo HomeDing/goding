@@ -4,5 +4,24 @@
 			"path": "."
 		}
 	],
-	"settings": {}
+
+	"settings": {
+		"makefile.configureOnOpen": false,
+		"cSpell.words": [
+			"CLSCTX",
+			"CLSID",
+			"COINIT",
+			"goroutines",
+			"Mixy",
+			"moutend",
+			"PKEY",
+			"STGM",
+			"sysex"
+		],
+
+		"chat.tools.terminal.autoApprove": {
+			"gofmt": true,
+			"go": true
+		}
+	}
 }

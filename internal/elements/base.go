@@ -41,15 +41,15 @@ func NewBaseElement(elType string, elId string) Base {
 	return this
 }
 
-func (e Base) GetKey() string {
+func (e *Base) GetKey() string {
 	return MakeKey(e.elementType, e.elementID)
 }
 
-func (e Base) IsActive() bool {
+func (e *Base) IsActive() bool {
 	return e.isActive
 }
 
-func (e Base) Get(key string) string {
+func (e *Base) Get(key string) string {
 	if value, ok := e.Config[key]; ok {
 		return value
 	}
@@ -63,35 +63,40 @@ func (e Base) Get(key string) string {
 // Returns true if the value was changed, false otherwise.
 // This function will only change known configuration or value keys. Unknown keys will be ignored and return false.
 // The keys are case-sensitive and must be passed as lowercase.
-func (e Base) Set(key, value string) bool {
+func (e *Base) Set(key, value string) bool {
 	if oldValue, ok := e.Config[key]; ok {
+
+		if e.isActive {
+			slog.Error("Setting parameter after activation:", "key", key, "value", value)
+		}
+
 		if value != oldValue {
 			e.Config[key] = value
-			return true
 		}
+		return true
 	}
 
 	if oldValue, ok := e.Values[key]; ok {
 		if value != oldValue {
 			e.Values[key] = value
-			return true
 		}
+		return true
 	}
 	return false
-}
+} // Set()
 
-func (e Base) Start() {
+func (e *Base) Start() {
 	slog.Debug("base.start", "element", e.GetKey())
 	// Base element does not have any specific start behavior.
 	e.isActive = true
 	e.Config["active"] = "1"
 }
 
-func (e Base) Loop() bool {
+func (e *Base) Loop() bool {
 	return false
 }
 
-func (e Base) State() map[string]string {
+func (e *Base) State() map[string]string {
 	return e.Values
 }
 

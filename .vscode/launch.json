@@ -12,6 +12,7 @@
       "program": "main.go",
       "args": [
         "midi",
+        "serve",
         "--verbose"
       ]
     }
