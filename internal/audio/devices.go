@@ -20,14 +20,10 @@ import (
 	"github.com/go-ole/go-ole"
 )
 
-// The DeviceInfo struct saves public information about a corresponding device.
-//   - ID -- the internal ID
-//   - Flow -- the flow direction "in" or "out"
-//   - Name -- A friendly name, also used for specifying a device like "DELL U3223QE (Intel(R) Display-Audio)"
+// The DeviceInfo struct saves public information about a corresponding device, extending the EndpointInfo.
 type DeviceInfo struct {
-	Flow string
-	Name string
-	ID   string
+	EndpointInfo
+	ID string //  the internal device ID
 }
 
 // get wca flow direction for devices from EndpointType
@@ -108,7 +104,13 @@ func GetDefaultDevice(ept EndpointType) (*DeviceInfo, error) {
 		return nil, err
 	}
 
-	return &DeviceInfo{ID: id, Flow: ept.String(), Name: pv.String()}, nil
+	return &DeviceInfo{
+		EndpointInfo: EndpointInfo{
+			Flow: ept.String(),
+			Name: pv.String(),
+		},
+		ID: id,
+	}, nil
 } // GetDefaultDevice()
 
 // ListDevices enumerates all active audio endpoint devices for the specified
@@ -198,9 +200,11 @@ func ListDevices(ept EndpointType) ([]DeviceInfo, error) {
 		name := pv.String()
 
 		result = append(result, DeviceInfo{
-			ID:   id,
-			Flow: ept.String(),
-			Name: name,
+			EndpointInfo: EndpointInfo{
+				Flow: ept.String(),
+				Name: name,
+			},
+			ID: id,
 		})
 	}
 
@@ -397,7 +401,7 @@ func (d *DeviceInfo) GetMute() (bool, error) {
 //
 // Behavior:
 //   - Passing true mutes the device.
-//   - Passing false unmutes the device.
+//   - Passing false un-mutes the device.
 //   - Returns an error if the device cannot be accessed or the mute state
 //     cannot be changed.
 //

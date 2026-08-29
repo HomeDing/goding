@@ -20,49 +20,18 @@ import (
 	"github.com/MixyLabs/go-wca/pkg/wca"
 	"github.com/go-ole/go-ole"
 
-	"path/filepath"
 	"strings"
-	"syscall"
-
-	"golang.org/x/sys/windows"
 )
 
 // The DeviceInfo struct saves public information about a corresponding device.
 //   - PID -- the internal ID
 //   - Name -- A friendly name, also used for specifying a device like "DELL U3223QE (Intel(R) Display-Audio)"
 type SessionInfo struct {
-	Name        string
+	EndpointInfo
 	PID         uint32
 	SystemSound bool
 	Active      bool
 }
-
-// ===== local functions =====
-
-// get a Friendly name for a process with a audio session
-func nameFromPID(pid uint32) (string, error) {
-	const PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
-
-	h, err := windows.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
-	if err != nil {
-		return "", err
-	}
-	defer windows.CloseHandle(h)
-
-	var buf [260]uint16
-	size := uint32(len(buf))
-
-	err = windows.QueryFullProcessImageName(h, 0, &buf[0], &size)
-	if err != nil {
-		return "", err
-	}
-
-	full := syscall.UTF16ToString(buf[:size])
-	base := filepath.Base(full) // e.g. "chrome.exe"
-
-	// Optional: strip ".exe"
-	return strings.TrimSuffix(base, ".exe"), nil
-} // nameFromPID
 
 // ===== Public functions =====
 
@@ -133,7 +102,11 @@ func ListSessions() ([]SessionInfo, error) {
 			audioSessionControl2 = (*wca.IAudioSessionControl2)(unsafe.Pointer(dispatch))
 		}
 
-		var si = SessionInfo{}
+		var si = SessionInfo{
+			EndpointInfo: EndpointInfo{
+				Flow: "app",
+			},
+		}
 
 		si.SystemSound = audioSessionControl2.IsSystemSoundsSession() == nil
 		audioSessionControl2.GetProcessId(&si.PID)

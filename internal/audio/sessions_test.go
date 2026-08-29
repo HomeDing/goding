@@ -17,7 +17,7 @@ func TestListSessions(t *testing.T) {
 
 	sessions, err = ListSessions()
 	if err != nil {
-		t.Skipf("Windows audio device enumeration unavailable: %v", err)
+		t.Skipf("Audio session enumeration unavailable: %v", err)
 	}
 
 	for index, session := range sessions {

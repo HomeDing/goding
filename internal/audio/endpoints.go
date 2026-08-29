@@ -25,6 +25,12 @@ const (
 	// Window      EndpointType = 3
 )
 
+// The EndpointInfo contains the common attributes and functions of devices and sessions.
+type EndpointInfo struct {
+	Name string // friendly name of device or application, used for matching
+	Flow string // Endpoint Type "out", "in", "app"
+}
+
 func (ept EndpointType) String() string {
 	switch ept {
 	case Output:
@@ -57,6 +63,25 @@ func ScanEndpointType(name string) (EndpointType, error) {
 		return 0, errors.New("Unknown Endpoint type")
 	}
 	return ret, nil
+}
+
+// ===== default implementation for endpoints generating no errors =====
+
+func (ep *EndpointInfo) GetVolume() (int, error) {
+	return 0, nil
+}
+
+// default implementation for endpoint generating no errors
+func (ep *EndpointInfo) SetVolume(vol int) error {
+	return nil
+}
+
+func (d *EndpointInfo) GetMute() (bool, error) {
+	return false, nil
+} // GetMute
+
+func (d *EndpointInfo) SetMute(muted bool) error {
+	return nil
 }
 
 // End.
