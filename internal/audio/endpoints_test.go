@@ -16,6 +16,44 @@ import (
 	"github.com/MixyLabs/go-wca/pkg/wca"
 )
 
+func TestEndpointIdentifiers(t *testing.T) {
+	if et, s := ParseEndpoint("out:con"); et != Output || s != "con" {
+		t.Fatal("expected out:con to be usable as endpoint identifier")
+	}
+
+	if et, s := ParseEndpoint("out.con"); et != Output || s != "con" {
+		t.Fatal("expected out:con to be usable as endpoint identifier")
+	}
+
+	if et, s := ParseEndpoint("out-con"); et != Output || s != "con" {
+		t.Fatal("expected out:con to be usable as endpoint identifier")
+	}
+
+	if et, s := ParseEndpoint("out:main"); et != Output || s != "con" {
+		t.Fatal("expected out:con to be usable as endpoint identifier")
+	}
+
+	if et, s := ParseEndpoint("out:console"); et != Output || s != "con" {
+		t.Fatal("expected out:con to be usable as endpoint identifier")
+	}
+
+	if et, s := ParseEndpoint("in:main"); et != Input || s != "con" {
+		t.Fatal("expected out:con to be usable as endpoint identifier")
+	}
+
+	if et, s := ParseEndpoint("in:special"); et != Input || s != "special" {
+		t.Fatal("expected out:con to be usable as endpoint identifier")
+	}
+
+	if et, s := ParseEndpoint("app:edge"); et != Application || s != "edge" {
+		t.Fatal("expected out:con to be usable as endpoint identifier")
+	}
+
+	if et, s := ParseEndpoint("miss:edge"); et != Unknown || s != "edge" {
+		t.Fatal("expected out:con to be usable as endpoint identifier")
+	}
+} // TestEndpointIdentifiers()
+
 func TestListEndpoints(t *testing.T) {
 
 	// endpoints can hold devices and sessions

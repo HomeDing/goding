@@ -11,7 +11,6 @@ package elements
 import (
 	"log/slog"
 	"strconv"
-	"strings"
 
 	"github.com/HomeDing/goding/internal/audio"
 	"github.com/HomeDing/goding/internal/elements/registry"
@@ -74,36 +73,6 @@ func NewVolumeElement(elementId string) *Volume {
 } // NewVolumeElement()
 
 // ===== private functions =====
-
-// Reformat the endpoint type and name combined string by removing extra characters and normalize
-// Valid endpoint names:
-//   - out:console, output:communication, output:multimedia
-//   - out:con, out:com, out:mul
-//   - out.con, out-com
-//
-// scanEndpointName returns the 2 parts type and name as lowercase 3-characters
-//
-// "out[put]:con[sole]" -- the current output device for Games, system notification sounds and voice commands
-// "out[put]:com[munication]" -- the current output device for voice communications.
-// "out[put]:mul[timedia]" -- the current output device for Music, movies, narration, and live music recording.
-// "in[put]:..."
-func scanEndpointName(name string) (audio.EndpointType, string, error) {
-	var err error
-	var epType audio.EndpointType
-
-	epts, epName, _ := strings.Cut(name, ":")
-	if epType, err = audio.ScanEndpointType(epts); err == nil {
-		// accept alternate names
-		switch epName {
-		case "main":
-			fallthrough
-		case "console":
-			epName = "con"
-		}
-		return epType, epName, nil
-	}
-	return audio.Output, "", err
-} // scanEndpointName()
 
 // Get the deviceInfo when controlling a input or output device
 func (e *Volume) getDeviceInfo() *audio.DeviceInfo {
@@ -188,8 +157,11 @@ func (e *Volume) Set(key, value string) bool {
 			// ===== parameters
 
 		case "endpoint":
-			e.Config["endpoint"] = audio.CleanEndpointName(value)
-			e.et, e.epName, err = scanEndpointName(e.Config["endpoint"])
+			e.et, e.epName = audio.ParseEndpoint(value)
+			e.Config["endpoint"] = e.et.String() + ":" + e.epName
+			if e.et == audio.Unknown {
+				return false
+			}
 
 		case "min":
 			e.minimum = newValue

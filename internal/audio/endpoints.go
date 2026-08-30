@@ -12,13 +12,13 @@
 package audio
 
 import (
-	"errors"
 	"strings"
 )
 
 type EndpointType int
 
 const (
+	Unknown     EndpointType = -1
 	Output      EndpointType = 0
 	Input       EndpointType = 1
 	Application EndpointType = 2
@@ -42,28 +42,60 @@ func (ept EndpointType) String() string {
 		// case Window:
 		// 	return "win"
 	}
-	return "unknown"
-}
+	return "no"
+} // EndpointType.String()
 
-// find the endpoint type from a textual input
-func ScanEndpointType(name string) (EndpointType, error) {
-	var ret EndpointType = Output
+// ParseEndpoint returns an endpoint identifier as EndpointType and name in lowercase
+//
+// Get endpoint type and clean identifier from a textual input
+// Reformat the input for type and name combined string by removing extra characters and normalize
+// Valid endpoint names:
+//   - out:console, output:communication, output:multimedia
+//   - out:con, out:com, out:mul
+//   - out.con, out-com
+//
+// "out[put]:con[sole]" -- the current output device for Games, system notification sounds and voice commands
+// "out[put]:com[munication]" -- the current output device for voice communications.
+// "out[put]:mul[timedia]" -- the current output device for Music, movies, narration, and live music recording.
+// "in[put]:..."
+func ParseEndpoint(name string) (EndpointType, string) {
+	var epType EndpointType = Unknown
+
 	name = strings.ToLower(name)
+	name = strings.Replace(name, ".", ":", 1)
+	name = strings.Replace(name, "-", ":", 1)
 
-	switch {
-	case name[0:3] == "out":
-		ret = Output
-	case name[0:2] == "in":
-		ret = Input
-	case name[0:3] == "app":
-		ret = Application
-	// case name[0:2] == "win":
-	// 	ret = Window
-	default:
-		return 0, errors.New("Unknown Endpoint type")
+	if !strings.Contains(name, (":")) {
+		// use output as default
+		name = "out:" + name
 	}
-	return ret, nil
-}
+
+	sType, sID, _ := strings.Cut(name, ":")
+
+	// verify sType
+	l := len(sType)
+	switch {
+	case l >= 2 && sType[0:2] == "in":
+		epType = Input
+	case l >= 3 && sType[0:3] == "out":
+		epType = Output
+	case l >= 3 && sType[0:3] == "app":
+		epType = Application
+		// case sType[0:2] == "win":
+		// 	epType = Window
+	}
+
+	// verify sType
+	if epType == Input || epType == Output {
+		switch sID {
+		case "main":
+			fallthrough
+		case "console":
+			sID = "con"
+		}
+	}
+	return epType, sID
+} // ParseEndpoint()
 
 // ===== default implementation for endpoints generating no errors =====
 

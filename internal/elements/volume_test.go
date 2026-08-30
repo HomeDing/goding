@@ -58,6 +58,27 @@ func TestVolumeElementSet(t *testing.T) {
 	}
 }
 
+func TestEndpointIdentifiers(t *testing.T) {
+	volume := NewVolumeElement("test02")
+
+	if ok := volume.Set("endpoint", "out:con"); !ok {
+		t.Fatal("expected out:con to be usable as endpoint identifier")
+	}
+
+	if ok := volume.Set("endpoint", "in:con"); !ok {
+		t.Fatal("expected in:con to be usable as endpoint identifier")
+	}
+
+	if ok := volume.Set("endpoint", "app:edge"); !ok {
+		t.Fatal("expected app:edge to be usable as endpoint identifier")
+	}
+
+	if ok := volume.Set("endpoint", "no:edges"); ok {
+		t.Fatal("expected no:edges to be rejected as endpoint identifier")
+	}
+
+}
+
 func TestVolumeElementLoopAndState(t *testing.T) {
 	volume := NewVolumeElement("speaker1")
 
