@@ -64,6 +64,22 @@ func GetNext() (string, bool) {
 	return action, true
 }
 
+// TODO: create test cases for the action queue functions to ensure correct behavior under concurrent access and edge cases.
+func GetlatestFor(target string) (string, bool) {
+	mu.Lock()
+	defer mu.Unlock()
+
+	// Iterate backwards to find the latest action for the target.
+	for i := len(queue) - 1; i >= 0; i-- {
+		action := queue[i]
+		if strings.HasPrefix(action, target+"/") {
+			return action, true
+		}
+	}
+
+	return "", false
+}
+
 // action : type/id?key=value
 func DispatchNow(action string) {
 	slog.Debug("DispatchNow", slog.String("action", action))

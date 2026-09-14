@@ -44,8 +44,8 @@ Devices in the HomeDing eco system expose the following HTTP endpoints (excerpt)
 
 * `GET /api/state/<type>/<id>` : Retrieve the current state and current values of a
   specific element by type and ID.
-* `GET /api/state` : Retrieve the current state and current values for all configured
-  elements of the device.
+* `GET /api/state` : Retrieve the current state and current values for all configured /
+  running elements of the device.
 * `GET /env.json` : Retrieve the current JSON configuration of the device itself.
 * `GET /config.json` : Retrieve the current JSON configuration of the running elements.
 * `GET /api/state/<type>/<id>?<prop>=<value>` : Change a element property or

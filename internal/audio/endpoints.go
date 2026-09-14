@@ -8,7 +8,7 @@
 // This package provides a wrapper around OS audio APIs so the
 // rest of the project does not have to deal with `ole` or `wca` specific directly.
 // Every call will initialize OLE (CoInitializeEx) and uninitialize OLE (CoUninitialize)
-// as goroutines are not bound to threads.
+// as goroutine are not bound to threads.
 package audio
 
 import (
@@ -88,9 +88,7 @@ func ParseEndpoint(name string) (EndpointType, string) {
 	// verify sType
 	if epType == Input || epType == Output {
 		switch sID {
-		case "main":
-			fallthrough
-		case "console":
+		case "main", "console":
 			sID = "con"
 		}
 	}

@@ -1,0 +1,10 @@
+{
+	"Link to local Go file": {
+    "scope": "markdown",
+		"prefix": "golink",
+		"body": [
+			"[${1:file.go}](${1})"
+		],
+		"description": "Insert a Markdown link to a local Go file"
+	}
+}

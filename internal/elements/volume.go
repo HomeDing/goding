@@ -25,6 +25,7 @@ type Volume struct {
 	et                      audio.EndpointType
 	epName                  string
 	device                  *audio.DeviceInfo
+	session                 *audio.SessionInfo
 }
 
 // find the endpoint for one of the pre-defined keys from a textual input
@@ -80,9 +81,7 @@ func (e *Volume) getDeviceInfo() *audio.DeviceInfo {
 	var err error
 
 	switch e.et {
-	case audio.Input:
-		fallthrough
-	case audio.Output:
+	case audio.Input, audio.Output:
 		if e.epName == "con" {
 			ret, err = audio.GetDefaultDevice(e.et)
 		} else {
@@ -112,9 +111,24 @@ func (e *Volume) getVolume() int {
 func (e *Volume) setVolume(value int) {
 	slog.Debug("volume.setVolume", "value", value)
 
-	di := e.getDeviceInfo()
-	if di != nil {
-		di.SetVolume(value)
+	switch e.et {
+	case audio.Output, audio.Input:
+		di := e.getDeviceInfo()
+		if di != nil {
+			di.SetVolume(value)
+		}
+	case audio.Application:
+		var err error
+		// use found session info until it doesn't work any more
+		if e.session == nil {
+			e.session, err = audio.FindSession(e.epName)
+		}
+		if e.session != nil {
+			err = e.session.SetVolume(value)
+			if err != nil {
+				e.session = nil
+			}
+		}
 	}
 } // setVolume()
 
@@ -135,10 +149,7 @@ func (e *Volume) Set(key, value string) bool {
 	if changed := e.Base.Set(key, value); changed {
 
 		switch key {
-		case "volume":
-			fallthrough
-		case "value":
-
+		case "value", "volume":
 			// constrain the new value to the min/max range
 			if newValue < e.minimum {
 				newValue = e.minimum
