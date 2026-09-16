@@ -5,6 +5,12 @@ github.com/diegosz/go-wca v0.5.1/go.mod h1:f4O7LPuXayVyoBs6XHfm8veVNLmsVkOuIi6JR
 github.com/go-ole/go-ole v1.2.5/go.mod h1:pprOEPIfldk/42T2oK7lQ4v4JSDwmV0As9GaiUsvbm0=
 github.com/go-ole/go-ole v1.3.0 h1:Dt6ye7+vXGIKZ7Xtk4s6/xVdGDQynvom7xCFEdWr6uE=
 github.com/go-ole/go-ole v1.3.0/go.mod h1:5LS6F96DhAwUc7C+1HLexzMXY1xGRSryjyPPKW6zv78=
+github.com/go-webgpu/goffi v0.6.3 h1:p4gKGikHBAQ/8iUiew9MV4C5M1ZGIsk8QGFGuJjMj+A=
+github.com/go-webgpu/goffi v0.6.3/go.mod h1:wfoxNsJkU+5RFbV1kNN1kunhc1lFHuJKK3zpgx08/uM=
+github.com/godbus/dbus/v5 v5.2.2 h1:TUR3TgtSVDmjiXOgAAyaZbYmIeP3DPkld3jgKGV8mXQ=
+github.com/godbus/dbus/v5 v5.2.2/go.mod h1:3AAv2+hPq5rdnr5txxxRwiGjPXamgoIHgz9FPBfOp3c=
+github.com/gogpu/systray v0.3.0 h1:1kbYI/XujAvbwaVs/4o/UAjSNW8DMgsGoBeACKTH+S0=
+github.com/gogpu/systray v0.3.0/go.mod h1:aoA1tAjYSKH/iVc761t7IVDOaTRYmOwglbcbpcLF1v0=
 gitlab.com/gomidi/midi/v2 v2.3.24 h1:afkq5nhlzKvZaj9QK80YbK8tH3lIlKLnPPP9HxxD7Do=
 gitlab.com/gomidi/midi/v2 v2.3.24/go.mod h1:jDpP4O4skYi+7iVwt6Zyp18bd2M4hkjtMuw2cmgKgfw=
 golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=

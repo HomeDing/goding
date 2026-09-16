@@ -37,7 +37,7 @@ func Init() {
 
 	// define the flags for the serve command
 	helpFlags = flag.NewFlagSet("help", flag.ExitOnError)
-	helpFlags.BoolVar(&global.VerboseFlag, "verbose", false, "enable verbose logging")
+	helpFlags.BoolVar(&global.VerboseFlag, "verbose", global.VerboseFlag, "enable verbose logging")
 } // Init()
 
 func Help() {

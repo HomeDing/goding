@@ -40,7 +40,7 @@ func Init() {
 	serveFlags = flag.NewFlagSet("serve", flag.ExitOnError)
 	serveFlags.IntVar(&global.Port, "port", 3333, "port to listen on")
 	serveFlags.StringVar(&global.WebFolder, "folder", "./web", "folder to serve static files from")
-	serveFlags.BoolVar(&global.VerboseFlag, "verbose", false, "enable verbose logging")
+	serveFlags.BoolVar(&global.VerboseFlag, "verbose", global.VerboseFlag, "enable verbose logging")
 }
 
 func Help() {

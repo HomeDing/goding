@@ -12,6 +12,9 @@ import (
 
 	"sync"
 
+	"github.com/gogpu/systray"
+
+	"github.com/HomeDing/goding/assets"
 	"github.com/HomeDing/goding/cmd/help"
 	"github.com/HomeDing/goding/cmd/midi"
 	"github.com/HomeDing/goding/cmd/serve"
@@ -23,7 +26,9 @@ import (
 
 // TODO: move global variables into a config struct and use a config file for configuration
 
-var wg sync.WaitGroup
+var activeCommands sync.WaitGroup
+
+var quitChannel = make(chan os.Signal, 1)
 
 var helpMode bool = false
 
@@ -43,13 +48,13 @@ func runCommand(command string, args []string) {
 	switch command {
 	case "help":
 		help.ParseArguments(args)
-		help.Run(&wg)
+		help.Run(&activeCommands)
 
 	case "serve":
 		// switch on dev mode to enable supporting functionality for development and debugging.
 		global.DevFlag = true
 		serve.ParseArguments(args)
-		serve.Run(&wg)
+		serve.Run(&activeCommands)
 
 	case "list":
 		midi.ParseArguments(args)
@@ -59,7 +64,7 @@ func runCommand(command string, args []string) {
 		// switch on dev mode to enable supporting functionality for development and debugging.
 		global.DevFlag = true
 		midi.ParseArguments(args)
-		midi.Run(&wg)
+		midi.Run(&activeCommands)
 
 	default:
 		slog.Error("unknown command: " + command + ". Use 'goding help' for usage information.")
@@ -124,14 +129,37 @@ func loadConfig() {
 			"max": "100",
 			"endpoint": "out:con",
 			"value": "50"
+	  },
+	  "trdo" : {	
+	  	"min": "0",
+			"max": "100",
+			"endpoint": "app:trdo",
+			"value": "20"
+	  },
+	  "bee" : {	
+	  	"min": "0",
+			"max": "100",
+			"endpoint": "app:bee",
+			"value": "20"
+	  },
+	  "syssound" : {	
+	  	"min": "0",
+			"max": "100",
+			"endpoint": "app:system",
+			"value": "80"
 	  }
+
 	},
 	"midi": {
-	  "1" : {	
-	  	"message": "[14] CC 76",
-			"onMessage": "volume/trdo?value=$v"
+	  "K5" : {	
+	  	"message": "[0] CC 74",
+			"onMessage": "volume/syssound?value=$v"
 	  },
-	  "main" : {	
+	  "K7" : {	
+	  	"message": "[14] CC 76",
+			"onMessage": "volume/bee?value=$v"
+	  },
+	  "K8" : {	
 	  	"message": "[14] CC 77",
 			"onMessage": "volume/main?value=$v"
 	  }
@@ -191,6 +219,41 @@ func loadConfig() {
 	}
 }
 
+func initTray() *systray.SystemTray {
+	tray := systray.New()
+
+	menu := systray.NewMenu()
+
+	menu.Add("Config...", func() {
+		slog.Info("Config clicked!")
+	})
+
+	menu.Add("About GoDing...", func() {
+		slog.Info("About clicked!")
+		tray.ShowNotification("Update Available", "Version 2.0 is ready to install.")
+	})
+
+	menu.Add("Quit", func() {
+		slog.Info("Quit clicked, removing tray...")
+		quitChannel <- syscall.SIGTERM
+	})
+
+	menu.AddSeparator()
+
+	// menu.AddCheckbox("Check me", false, func() { slog.Info("Checkbox toggled") })
+	// menu.AddSeparator()
+
+	tray.SetIcon(assets.GodingIcon).
+		SetDarkModeIcon(assets.GodingIcon).
+		SetTooltip("GoDing!").
+		SetMenu(menu)
+	// tray.OnClick(func() { slog.Info("Left click!") })
+	// tray.OnDoubleClick(func() { slog.Info("Double click!") })
+	// tray.OnRightClick(func() { slog.Info("Right click!") })
+	tray.Show()
+	return tray
+} // initTray()
+
 // Main entry point for the GoDing application.
 // It initializes the application, parses command-line arguments, and runs the specified commands.
 func main() {
@@ -201,11 +264,13 @@ func main() {
 	slog.SetLogLoggerLevel(slog.LevelDebug)
 	global.VerboseFlag = true
 
-	var quitChan = make(chan os.Signal, 1)
 	args := os.Args
-
 	slog.Info("GoDing starting...")
 
+	// Start the tray registration and the main window event loop.
+	tray := initTray()
+
+	// init all commands , don't start them yet, just register them
 	help.Init()
 	serve.Init()
 	midi.Init()
@@ -219,7 +284,7 @@ func main() {
 	if args[1] == "help" {
 		helpMode = true
 		help.ParseArguments(args[2:])
-		help.Run(&wg)
+		help.Run(&activeCommands)
 
 	} else {
 		parseAndRun(args[1:])
@@ -231,28 +296,35 @@ func main() {
 		loadConfig()
 		registry.StartElements()
 
-		signal.Notify(quitChan, syscall.SIGINT, syscall.SIGTERM)
+		signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)
 
-		// Run a goroutine to listen for signals
+		// Run a goroutine to listen for signals that will terminate the application.
+		// When a signal is received, it will stop all running commands / goroutines and clean up resources before exiting.
 		go func() {
 			slog.Debug("[Signal] waiting")
-			sig := <-quitChan // Wait for a signal
+			sig := <-quitChannel // Wait for a signal
 			slog.Debug("[Signal] Caught signal", slog.Any("sig", sig))
 
+			// Stop all co-routines and clean up resources before exiting.
 			help.Stop()
 			serve.Stop()
 			midi.Stop()
+			// And then stop the main window event loop.
+			tray.Remove()
+			// tray.Remove()
 		}()
 
-		slog.Debug("main.wait...")
-		wg.Wait() // Block until all workers finish
+		if err := tray.Run(); err != nil {
+			slog.Error("Tray initialization", "err", err)
+		}
+
+		activeCommands.Wait() // Block until all workers finish
 	}
 
 	if global.VerboseFlag {
 		slog.Debug("main.end")
 		time.Sleep(time.Second * 1) // Give some time for cleanup before exiting
 	}
-
-}
+} // main ()
 
 // End.

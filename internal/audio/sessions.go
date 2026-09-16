@@ -121,7 +121,9 @@ func ListSessions() ([]SessionInfo, error) {
 			si.Name, _ = FriendlyProcessName(si.PID)
 		}
 
-		result = append(result, si)
+		if len(si.Name) > 0 {
+			result = append(result, si)
+		}
 
 		// Release OLE stuff from inner loop
 		// simpleAudioVolume.Release()
