@@ -33,11 +33,12 @@ type SessionInfo struct {
 	Active      bool
 }
 
-// ===== Public functions =====
+// ===== internal functions =====
 
-// Create a List of all active audio sessions on the default device
-func ListSessions() ([]SessionInfo, error) {
+// Create a List of audio sessions on the default device matching match.
+func matchSessions(match string) ([]SessionInfo, error) {
 	var result []SessionInfo
+	match = strings.ToLower(match)
 
 	// Initialize COM
 	if oleCleanup, err := oleInit(); err != nil {
@@ -121,7 +122,7 @@ func ListSessions() ([]SessionInfo, error) {
 			si.Name, _ = FriendlyProcessName(si.PID)
 		}
 
-		if len(si.Name) > 0 {
+		if len(si.Name) > 0 && (match == "" || strings.Contains(strings.ToLower(si.Name), match)) {
 			result = append(result, si)
 		}
 
@@ -133,20 +134,23 @@ func ListSessions() ([]SessionInfo, error) {
 
 	return result, nil
 
+} // matchSessions()
+
+// ===== Public functions =====
+
+// Create a List of all active audio sessions on the default device.
+func ListSessions() ([]SessionInfo, error) {
+	return matchSessions("")
 } // ListSessions()
 
-func FindSession(match string) (*SessionInfo, error) {
-	match = strings.ToLower(match)
-
-	sessions, _ := ListSessions()
+func FindSession(match string) *SessionInfo {
+	sessions, _ := matchSessions(match)
 
 	for _, session := range sessions {
-		if strings.Contains(strings.ToLower(session.Name), match) {
-			return &session, nil
-		}
+		return &session
 	} // for
 
-	return nil, errors.New("Session not found")
+	return nil
 } // FindSession()
 
 func (s *SessionInfo) GetVolume() (int, error) {

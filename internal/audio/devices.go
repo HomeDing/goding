@@ -340,6 +340,31 @@ func (d *DeviceInfo) SetVolume(vol int) error {
 	return nil
 } // SetVolume()
 
+// RegisterVolumeChangeNotify requests notifications for master volume changes.
+// The underlying go-wca package currently exposes the COM notification call, but it
+// returns E_NOTIMPL on Windows, so this acts as a direct wrapper and the example
+// falls back to polling if the callback is unsupported.
+func (d *DeviceInfo) RegisterVolumeChangeNotify() error {
+	_, aev, cleanup, err := d.endpointVolume()
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	return aev.RegisterControlChangeNotify()
+} // RegisterVolumeChangeNotify()
+
+// UnregisterVolumeChangeNotify removes the notification subscription.
+func (d *DeviceInfo) UnregisterVolumeChangeNotify() error {
+	_, aev, cleanup, err := d.endpointVolume()
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	return aev.UnregisterControlChangeNotify()
+} // UnregisterVolumeChangeNotify()
+
 // GetMute queries the mute state of the audio endpoint device represented by
 // this DeviceInfo instance.
 //

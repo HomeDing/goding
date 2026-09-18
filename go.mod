@@ -12,6 +12,7 @@ require (
 )
 
 require (
+	github.com/deploymenttheory/go-bindings-win32 v0.5.0 // indirect
 	github.com/go-webgpu/goffi v0.6.3 // indirect
 	github.com/godbus/dbus/v5 v5.2.2 // indirect
 )

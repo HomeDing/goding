@@ -14,6 +14,7 @@ import (
 
 	"github.com/HomeDing/goding/internal/audio"
 	"github.com/HomeDing/goding/internal/elements/registry"
+	"github.com/HomeDing/goding/internal/global"
 )
 
 // The Volume element exists for controlling the volume of audio endpoints
@@ -107,6 +108,12 @@ func (e *Volume) getVolume() int {
 	return 0
 } // getVolume()
 
+func (e *Volume) display(name string, value int) {
+	global.Display.SetHeading(name)
+	global.Display.SetProgress(int32(value))
+	global.Display.SetMessage(strconv.Itoa(value) + "%")
+}
+
 // Set the volume, fail without error
 func (e *Volume) setVolume(value int) {
 	slog.Debug("volume.setVolume", "value", value)
@@ -116,18 +123,13 @@ func (e *Volume) setVolume(value int) {
 		di := e.getDeviceInfo()
 		if di != nil {
 			di.SetVolume(value)
+			e.display(di.Name, value)
 		}
 	case audio.Application:
-		var err error
-		// use found session info until it doesn't work any more
-		if e.session == nil {
-			e.session, err = audio.FindSession(e.epName)
-		}
+		e.session = audio.FindSession(e.epName)
 		if e.session != nil {
-			err = e.session.SetVolume(value)
-			if err != nil {
-				e.session = nil
-			}
+			e.session.SetVolume(value)
+			e.display(e.session.Name, value)
 		}
 	}
 } // setVolume()

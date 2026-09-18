@@ -22,6 +22,7 @@ import (
 	"github.com/HomeDing/goding/internal/elements"
 	"github.com/HomeDing/goding/internal/elements/registry"
 	"github.com/HomeDing/goding/internal/global"
+	"github.com/HomeDing/goding/internal/osd"
 )
 
 // TODO: move global variables into a config struct and use a config file for configuration
@@ -130,7 +131,7 @@ func loadConfig() {
 			"endpoint": "out:con",
 			"value": "50"
 	  },
-	  "trdo" : {	
+	  "traydio" : {	
 	  	"min": "0",
 			"max": "100",
 			"endpoint": "app:trdo",
@@ -152,12 +153,12 @@ func loadConfig() {
 	},
 	"midi": {
 	  "K5" : {	
-	  	"message": "[0] CC 74",
+	  	"message": "[14] CC 74",
 			"onMessage": "volume/syssound?value=$v"
 	  },
 	  "K7" : {	
 	  	"message": "[14] CC 76",
-			"onMessage": "volume/bee?value=$v"
+			"onMessage": "volume/traydio?value=$v"
 	  },
 	  "K8" : {	
 	  	"message": "[14] CC 77",
@@ -238,8 +239,7 @@ func initTray() *systray.SystemTray {
 		quitChannel <- syscall.SIGTERM
 	})
 
-	menu.AddSeparator()
-
+	// menu.AddSeparator()
 	// menu.AddCheckbox("Check me", false, func() { slog.Info("Checkbox toggled") })
 	// menu.AddSeparator()
 
@@ -270,6 +270,10 @@ func main() {
 	// Start the tray registration and the main window event loop.
 	tray := initTray()
 
+	// Start the OnScreenDisplay.
+	global.Display, _ = osd.New()
+	global.Display.SetTimeout(2)
+
 	// init all commands , don't start them yet, just register them
 	help.Init()
 	serve.Init()
@@ -277,8 +281,7 @@ func main() {
 
 	if len(args) == 1 {
 		slog.Info("main no parameters, defaulting to 'midi serve'")
-		// args = append(args, "midi", "serve")
-		args = append(args, "serve")
+		args = append(args, "midi", "serve")
 	}
 
 	if args[1] == "help" {
@@ -311,6 +314,7 @@ func main() {
 			midi.Stop()
 			// And then stop the main window event loop.
 			tray.Remove()
+			global.Display.Destroy(false)
 			// tray.Remove()
 		}()
 

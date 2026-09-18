@@ -11,6 +11,8 @@
 // It can be imported by other internal packages as needed.
 package global
 
+import "github.com/HomeDing/goding/internal/osd"
+
 // current executed command (e.g. "serve", "client", etc.)
 var Command string = ""
 
@@ -30,3 +32,5 @@ var WebFolder string = "./web"
 // This is used in the Set method of elements
 // to disable changing Config values while running.
 var ConfigMode bool = true
+
+var Display *osd.OSD

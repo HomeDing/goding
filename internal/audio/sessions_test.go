@@ -29,26 +29,22 @@ func TestListSessions(t *testing.T) {
 }
 
 func TestFindSession(t *testing.T) {
-	var err error
-
-	if _, err = FindSession("System sounds"); err != nil {
-		t.Log("'System sounds' audio session could not be found.", err)
+	if s := FindSession("System sounds"); s == nil {
+		t.Log("'System sounds' audio session could not be found.")
 	}
 
-	if _, err = FindSession("Edge"); err != nil {
-		t.Log("'Edge' audio session could not be found.", err)
+	if s := FindSession("Edge"); s == nil {
+		t.Log("'Edge' audio session could not be found.")
 	}
 
-	if _, err = FindSession("TrDo"); err != nil {
-		t.Log("'TrDo' audio device could not be found.", err)
+	if s := FindSession("Traydio"); s == nil {
+		t.Log("'Traydio' audio session could not be found.")
 	}
-
 }
 
 func TestSessionVolume(t *testing.T) {
-
-	if s, err := FindSession("Edge"); err != nil {
-		t.Log("'Edge' audio session could not be found.", err)
+	if s := FindSession("Edge"); s == nil {
+		t.Log("'Edge' audio session could not be found.")
 	} else {
 		vol, _ := s.GetVolume()
 		t.Log("'Edge' volume", vol)

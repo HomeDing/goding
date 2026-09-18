@@ -2,23 +2,30 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"path": "../go-wca"
 		}
 	],
-
 	"settings": {
 		"makefile.configureOnOpen": false,
 		"cSpell.words": [
 			"CLSCTX",
 			"CLSID",
 			"COINIT",
+			"diegosz",
+			"epts",
+			"gomidi",
 			"goroutines",
+			"HFONT",
 			"Mixy",
 			"moutend",
 			"PKEY",
+			"procs",
 			"STGM",
-			"sysex"
+			"sysex",
+			"Vtbl"
 		],
-
 		"chat.tools.terminal.autoApprove": {
 			"gofmt": true,
 			"go": true
