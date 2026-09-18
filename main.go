@@ -2,15 +2,16 @@
 package main
 
 import (
-	"encoding/json"
 	"log/slog"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
 	"sync"
+
+	"github.com/deploymenttheory/go-bindings-win32/bindings/win32/ui/shell"
+	wm "github.com/deploymenttheory/go-bindings-win32/bindings/win32/ui/windowsandmessaging"
 
 	"github.com/gogpu/systray"
 
@@ -18,8 +19,7 @@ import (
 	"github.com/HomeDing/goding/cmd/help"
 	"github.com/HomeDing/goding/cmd/midi"
 	"github.com/HomeDing/goding/cmd/serve"
-	"github.com/HomeDing/goding/internal/common"
-	"github.com/HomeDing/goding/internal/elements"
+	"github.com/HomeDing/goding/internal/config"
 	"github.com/HomeDing/goding/internal/elements/registry"
 	"github.com/HomeDing/goding/internal/global"
 	"github.com/HomeDing/goding/internal/osd"
@@ -114,110 +114,9 @@ func parseAndRun(args []string) {
 	}
 }
 
-// loadConfig loads the configuration from a JSON file and creates and initializes the Elements.
-func loadConfig() {
-
-	var data string = `{
-	"Element": { 
-	  "e1" : {
-			"key1": "value1",
-			"key2": "value2"
-	  }
-	},
-	"Volume": {
-	  "main" : {	
-	  	"min": "0",
-			"max": "100",
-			"endpoint": "out:con",
-			"value": "50"
-	  },
-	  "traydio" : {	
-	  	"min": "0",
-			"max": "100",
-			"endpoint": "app:trdo",
-			"value": "20"
-	  },
-	  "bee" : {	
-	  	"min": "0",
-			"max": "100",
-			"endpoint": "app:bee",
-			"value": "20"
-	  },
-	  "syssound" : {	
-	  	"min": "0",
-			"max": "100",
-			"endpoint": "app:system",
-			"value": "80"
-	  }
-
-	},
-	"midi": {
-	  "K5" : {	
-	  	"message": "[14] CC 74",
-			"onMessage": "volume/syssound?value=$v"
-	  },
-	  "K7" : {	
-	  	"message": "[14] CC 76",
-			"onMessage": "volume/traydio?value=$v"
-	  },
-	  "K8" : {	
-	  	"message": "[14] CC 77",
-			"onMessage": "volume/main?value=$v"
-	  }
-	}
-}`
-
-	// os.ReadFile(filename)
-
-	// root object
-	var root map[string]any
-	slog.Debug("LoadConfig", slog.String("data", data))
-
-	err := json.Unmarshal([]byte(data), &root)
-	if err == nil {
-
-		// Iterate groups: "person", "boss", ...
-		for elType, elTypeRaw := range root {
-			// slog.Debug("LoadConfig.Type", slog.String("Type", elType))
-
-			group, ok := elTypeRaw.(map[string]any)
-			if ok {
-				// Iterate elements in group
-				for elId, elRaw := range group {
-					slog.Debug("LoadConfig.create", "key", elements.MakeKey(elType, elId))
-					var el common.Element
-
-					// create element of type elType with id elId
-					// TODO: implement a generic factory for element creation instead of hardcoding the types here.
-					switch strings.ToLower(elType) {
-					case "volume":
-						el = elements.NewVolumeElement(elId)
-					case "midi":
-						el = elements.NewMidiElement(elId)
-					}
-					slog.Debug("LoadConfig.created:", slog.Any("element", el))
-
-					if el != nil {
-						// Iterate attributes of element
-						single, ok := elRaw.(map[string]any)
-						if ok {
-							for attr, attrRaw := range single {
-								slog.Debug("LoadConfig.set", slog.String("attr", attr), slog.Any("attrRaw", attrRaw))
-
-								el.Set(strings.ToLower(attr), attrRaw.(string))
-
-								// attributes, ok := elRaw.(map[string]any)
-
-								// // Iterate attributes
-								// 	slog.Debug("LoadConfig.attributes", slog.Any("elRaw", elRaw))
-							} // for
-						}
-					} // if el != nil
-					// elConfig, ok := elRaw.(map[string]any)
-				}
-			}
-		}
-	}
+func openBrowser(page string) {
+	cmd := "open"
+	shell.ShellExecute(0, &cmd, serve.BaseURL+page, nil, nil, wm.SW_NORMAL)
 }
 
 func initTray() *systray.SystemTray {
@@ -225,13 +124,21 @@ func initTray() *systray.SystemTray {
 
 	menu := systray.NewMenu()
 
-	menu.Add("Config...", func() {
+	menu.Add("Open Board", func() {
+		slog.Info("Board clicked!")
+		openBrowser("board.htm")
+	})
+
+	menu.Add("Open Config", func() {
 		slog.Info("Config clicked!")
+		openBrowser("config.htm")
 	})
 
 	menu.Add("About GoDing...", func() {
 		slog.Info("About clicked!")
-		tray.ShowNotification("Update Available", "Version 2.0 is ready to install.")
+		// tray.ShowNotification("Update Available", "Version 2.0 is ready to install.")
+		openBrowser("about.htm")
+
 	})
 
 	menu.Add("Quit", func() {
@@ -246,10 +153,10 @@ func initTray() *systray.SystemTray {
 	tray.SetIcon(assets.GodingIcon).
 		SetDarkModeIcon(assets.GodingIcon).
 		SetTooltip("GoDing!").
-		SetMenu(menu)
-	// tray.OnClick(func() { slog.Info("Left click!") })
-	// tray.OnDoubleClick(func() { slog.Info("Double click!") })
-	// tray.OnRightClick(func() { slog.Info("Right click!") })
+		SetMenu(menu).
+		OnClick(func() {
+			openBrowser("index.htm")
+		})
 	tray.Show()
 	return tray
 } // initTray()
@@ -296,7 +203,12 @@ func main() {
 			slog.SetLogLoggerLevel(slog.LevelDebug)
 		}
 
-		loadConfig()
+		config.Init()
+		_, err := config.Load()
+		if err != nil {
+			slog.Error("failed to load config", "err", err)
+		}
+		config.Storage.CreateElements()
 		registry.StartElements()
 
 		signal.Notify(quitChannel, syscall.SIGINT, syscall.SIGTERM)

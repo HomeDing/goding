@@ -31,6 +31,8 @@ var srv *http.Server
 // serve command parameters
 var serveFlags *flag.FlagSet
 
+var BaseURL string
+
 // Initialize the serve command and its flags in the Init function, which is called before main.
 // This allows us to set up the command and its flags before parsing the command-line arguments in main.
 func Init() {
@@ -153,7 +155,8 @@ func Run(wg *sync.WaitGroup) error {
 		chain = mux
 	}
 
-	fmt.Println("Starting goding web server on http://localhost:" + fmt.Sprint(global.Port) + "/")
+	BaseURL = "http://localhost:" + fmt.Sprint(global.Port) + "/"
+	fmt.Println("Starting goding web server on " + BaseURL)
 
 	// Create a server instance
 	srv = &http.Server{
@@ -178,6 +181,7 @@ func Run(wg *sync.WaitGroup) error {
 	return nil
 }
 
+// Stop the Webserver
 func Stop() {
 	slog.Debug("serve.Stop()")
 	if isStarted && srv != nil {
