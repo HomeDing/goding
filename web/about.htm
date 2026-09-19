@@ -1,12 +1,51 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/docstyle.css" type="text/css">
   <title>About GoDing</title>
 </head>
-<body>
-  <h1>About GoDing</h1>
-  <p>See: <a href="https://github.com/HomeDing/goding">GoDing on Github</a>
+
+<body class="sitelayout">
+  <header>
+    <h1>About GoDing</h1>
+  </header>
+  <main>
+    <h2>The project</h2>
+    <p>
+      GoDing is a Go-based HomeDing device implementation for Windows PCs and laptops.
+      It brings local, REST and JSON based device control to a Windows computer without
+      requiring a cloud service or a central server.
+    </p>
+    <p>
+      GoDing is part of the <a href="https://homeding.github.io/">HomeDing</a> ecosystem,
+      an open network protocol and collection of device implementations for local automation.
+    </p>
+
+    <h2>The application</h2>
+    <p>GoDing currently provides:</p>
+    <ul>
+      <li>A web server for the user interface and REST API.</li>
+      <li>A MIDI receiver for faders, buttons, and other MIDI messages.</li>
+      <li>A volume controller for Windows audio endpoints and applications.</li>
+      <li>Configuration and action handling for HomeDing-compatible control.</li>
+    </ul>
+    <p>
+      The application is experimental and is being developed incrementally around Go's
+      standard library and concurrency features.
+    </p>
+
+    <h2>License</h2>
+    <p>
+      GoDing is free software released under the
+      <a href="https://github.com/HomeDing/goding/blob/main/LICENSE">BSD 3-Clause License</a>.
+      Copyright &copy; 2026 HomeDing.
+    </p>
+
+    <p><a href="https://github.com/HomeDing/goding">GoDing on GitHub</a></p>
+  </main>
 </body>
+
 </html>
