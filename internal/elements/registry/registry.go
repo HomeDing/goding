@@ -8,7 +8,11 @@
 // Package registry stores and retrieves element instances at runtime.
 package registry
 
-import "github.com/HomeDing/goding/internal/common"
+import (
+	"regexp"
+
+	"github.com/HomeDing/goding/internal/common"
+)
 
 // The element registry stores all configured elements at runtime.
 var elementRegistry = map[string]common.Element{}
@@ -33,6 +37,22 @@ func FindByKey(key string) common.Element {
 		return e
 	}
 	return nil
+}
+
+// FindAll returns all registered elements whose keys match the regexp expression.
+func FindAll(match string) []common.Element {
+	pattern, err := regexp.Compile(match)
+	if err != nil {
+		return []common.Element{}
+	}
+
+	result := make([]common.Element, 0)
+	for key := range elementRegistry {
+		if pattern.MatchString(key) {
+			result = append(result, elementRegistry[key])
+		}
+	}
+	return result
 }
 
 // Start all registered elements by calling their Start() method.

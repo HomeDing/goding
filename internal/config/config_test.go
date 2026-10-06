@@ -10,6 +10,8 @@ package config
 import (
 	"reflect"
 	"testing"
+
+	"github.com/HomeDing/goding/internal/elements/registry"
 )
 
 func TestUnmarshalConfig(t *testing.T) {
@@ -69,7 +71,29 @@ func TestUnmarshalConfig(t *testing.T) {
 			if !reflect.DeepEqual(Storage, test.expected) {
 				t.Fatalf("Storage mismatch:\n got: %#v\nwant: %#v", Storage, test.expected)
 			}
+			if got := RawJSON(); got != test.data {
+				t.Fatalf("RawJSON() = %q, want %q", got, test.data)
+			}
 		})
+	}
+}
+
+func TestCreateElementsUsesFactoriesAndRegistersConfiguredElement(t *testing.T) {
+	const elementID = "config-factory-test"
+	configuration := Config{ElementTypes: map[string]ElementType{
+		"Volume": {Elements: map[string]Element{
+			elementID: {Properties: map[string]string{"value": "73"}},
+		}},
+	}}
+
+	configuration.CreateElements()
+
+	element := registry.Find("volume", elementID)
+	if element == nil {
+		t.Fatal("expected configured element to be registered")
+	}
+	if got := element.Get("value"); got != "73" {
+		t.Fatalf("registered element value = %q, want %q", got, "73")
 	}
 }
 

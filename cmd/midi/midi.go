@@ -167,7 +167,7 @@ func listen(quitChan chan bool, wg *sync.WaitGroup) error {
 			if len(a) > 0 {
 				slog.Info("midi.action", "message", midiMsg, "value", value, "action", a)
 				a = strings.ReplaceAll(a, "$v", strconv.Itoa(int(value)))
-				actionQueue.DispatchNow(a)
+				actionQueue.AddOnce(a)
 
 			} else {
 				slog.Info("midi.action", "message", midiMsg, "value", value)

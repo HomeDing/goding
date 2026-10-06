@@ -7,10 +7,42 @@
 
 package elements
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+)
+
+func TestRegisteredElementFactories(t *testing.T) {
+	tests := []struct {
+		typeName string
+		id       string
+		key      string
+	}{
+		{typeName: "VOLUME", id: "factory-volume", key: "volume/factory-volume"},
+		{typeName: "midi", id: "factory-midi", key: "midi/factory-midi"},
+	}
+
+	for _, test := range tests {
+		element, err := NewElement(test.typeName, test.id)
+		if err != nil {
+			t.Fatalf("NewElement(%q) returned error: %v", test.typeName, err)
+		}
+		if got := element.GetKey(); got != test.key {
+			t.Errorf("NewElement(%q).GetKey() = %q, want %q", test.typeName, got, test.key)
+		}
+	}
+
+	if _, err := NewElement("unknown", "id"); err == nil {
+		t.Fatal("NewElement() expected an error for an unregistered type")
+	}
+
+	if got, want := FactoryNames(), []string{"midi", "volume"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("FactoryNames() = %v, want %v", got, want)
+	}
+}
 
 func TestNewVolumeElement(t *testing.T) {
-	volume := NewVolumeElement("speaker1")
+	volume := NewVolumeElement("speaker1").(*Volume)
 
 	if got := volume.GetKey(); got != "volume/speaker1" {
 		t.Fatalf("expected key to be %q, got %q", "volume/speaker1", got)
@@ -31,7 +63,7 @@ func TestNewVolumeElement(t *testing.T) {
 }
 
 func TestVolumeElementSet(t *testing.T) {
-	volume := NewVolumeElement("speaker2")
+	volume := NewVolumeElement("speaker2").(*Volume)
 
 	if ok := volume.Set("value", "75"); !ok {
 		t.Fatal("expected Set to return true when changing value")
@@ -59,7 +91,7 @@ func TestVolumeElementSet(t *testing.T) {
 }
 
 func TestEndpointIdentifiers(t *testing.T) {
-	volume := NewVolumeElement("test02")
+	volume := NewVolumeElement("test02").(*Volume)
 
 	if ok := volume.Set("endpoint", "out:con"); !ok {
 		t.Fatal("expected out:con to be usable as endpoint identifier")
@@ -80,7 +112,7 @@ func TestEndpointIdentifiers(t *testing.T) {
 }
 
 func TestVolumeElementLoopAndState(t *testing.T) {
-	volume := NewVolumeElement("speaker1")
+	volume := NewVolumeElement("speaker1").(*Volume)
 
 	if got := volume.Loop(); got {
 		t.Fatalf("expected Loop to return false, got %v", got)
@@ -93,7 +125,7 @@ func TestVolumeElementLoopAndState(t *testing.T) {
 }
 
 func TestVolumeElementRejectsInvalidValue(t *testing.T) {
-	volume := NewVolumeElement("speaker1")
+	volume := NewVolumeElement("speaker1").(*Volume)
 
 	if ok := volume.Set("value", "not-a-number"); ok {
 		t.Fatal("expected Set to reject invalid numeric values")

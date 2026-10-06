@@ -12,7 +12,7 @@ import (
 	"log/slog"
 
 	"github.com/HomeDing/goding/cmd/midi"
-	"github.com/HomeDing/goding/internal/elements/registry"
+	"github.com/HomeDing/goding/internal/common"
 )
 
 type Midi struct {
@@ -21,16 +21,21 @@ type Midi struct {
 	action string
 }
 
-// creates a new MidiElement instance with default configuration values and registers it in the registry.
-func NewMidiElement(elementId string) *Midi {
+// init registers the Midi element type with the element factory.
+// init() is called by the go runtime before main() and before any other package-level variables are initialized.
+func init() {
+	RegisterFactory("midi", NewMidiElement)
+}
+
+// NewMidiElement creates a Midi element with its default configuration values.
+func NewMidiElement(elementId string) common.Element {
 	v := &Midi{
-		Base: NewBaseElement("midi", elementId)}
+		Base: *newBaseElement("midi", elementId)}
 
 	// set initial configuration parameters
 	v.Config["message"] = ""
 	v.Config["onmessage"] = ""
 
-	registry.Register(v)
 	return v
 } // NewMidiElement()
 

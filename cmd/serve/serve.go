@@ -19,6 +19,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/HomeDing/goding/internal/config"
+	"github.com/HomeDing/goding/internal/elements"
 	"github.com/HomeDing/goding/internal/elements/registry"
 	"github.com/HomeDing/goding/internal/global"
 	"github.com/HomeDing/goding/internal/http/verbose"
@@ -86,6 +88,34 @@ func Run(wg *sync.WaitGroup) error {
 
 	// use extended FileServer-Handler for static files
 	mux.Handle("/", GoDingFileServer(global.WebFolder))
+	mux.HandleFunc("GET /config.json", func(w http.ResponseWriter, r *http.Request) {
+		data := config.RawJSON()
+		if data == "" {
+			http.Error(w, "configuration is not loaded", http.StatusServiceUnavailable)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_, _ = w.Write([]byte(data))
+	})
+
+	// Return the local computer name as the device element in the environment data.
+	mux.HandleFunc("GET /env.json", func(w http.ResponseWriter, r *http.Request) {
+		computerName, err := os.Hostname()
+		if err != nil {
+			slog.Error("failed to get computer name", "error", err)
+			http.Error(w, "failed to get computer name", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		result := map[string]map[string]string{
+			"device/0": {"name": computerName},
+		}
+		if err := json.NewEncoder(w).Encode(result); err != nil {
+			slog.Error("failed to encode environment data", "error", err)
+		}
+	})
 
 	// List all existing devices in the system
 	mux.Handle("GET /api/devices", HandleListDevices())
@@ -93,18 +123,33 @@ func Run(wg *sync.WaitGroup) error {
 	// List all existing devices in the system
 	mux.Handle("GET /api/sessions", HandleListSessions())
 
+	// List all implemented element types in the system
+	mux.HandleFunc("GET /api/elements", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		if err := json.NewEncoder(w).Encode(elements.FactoryNames()); err != nil {
+			slog.Error("failed to encode element types", "error", err)
+		}
+	})
+
 	// mux.HandleFunc("GET /api/state", api.HandleStatus)
 
 	mux.Handle("GET /api", http.NotFoundHandler())
 
-	// mux.HandleFunc("GET /api/state/", func(w http.ResponseWriter, r *http.Request) {
-	// 	slog.Debug("GET /api/state/")
-	// 	var v = volumeElement.NewVolumeElement("main")
-	// 	var stateMap = map[string]map[string]string{}
-	// 	w.Header().Set("Content-Type", "application/json")
-	// 	stateMap[v.GetKey()] = v.State()
-	// 	json.NewEncoder(w).Encode(stateMap)
-	// })
+	mux.HandleFunc("GET /api/state/", func(w http.ResponseWriter, r *http.Request) {
+		slog.Debug("GET /api/state/")
+		result := make(map[string]map[string]string)
+
+		// {"device/0":{"active":"true","name":"water3","title":"Balkon-Wasser","description":"Sonoff Basic R1 for plant water","safemode":"0","sd":"1","nextboot":"4292966371"},"ota/0":{"active":"true"},"digitalin/button":{"active":"true","value":"0"},"timer/water":{"active":"true","mode":"timer","time":"14078","value":"0"},"digitalout/led":{"active":"true","value":"0"},"digitalout/relay":{"active":"true","value":"0"}}
+
+		allElements := registry.FindAll(`\w\/\w`)
+
+		for _, e := range allElements {
+			result[e.GetKey()] = e.State()
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(result)
+	})
 
 	mux.HandleFunc("GET /api/state/{t}/{id}", func(w http.ResponseWriter, r *http.Request) {
 		t := r.PathValue("t")

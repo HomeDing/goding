@@ -47,11 +47,13 @@ The preferred way for communication between goroutines is to use channels. Chann
 * `quitChannel` in [/main.go](/main.go) is used to capture signals (interrupts) and trigger
   quitting the application (shutdown and exit). Also the goding/main.go creates a `sync.WaitGroup` to synchronize the lifecycle of all current goroutines.
 
-For actions more functionality like look ahead is required so the build-in channel
-mechanism cannot be used and the
-[/internal/actionqueue](/internal/actionqueue/actionqueue.go) is implementing a similar
-mechanism FIFO mechanism especially for actions.
+## ActionQueue
 
+The [/internal/actionqueue](/internal/actionqueue/actionqueue.go) package provides a
+mutex-protected FIFO for actions. A background worker starts when the first action is
+added and dispatches queued actions asynchronously in order. `AddOnce` replaces pending
+actions for the same target (the part before `?`), which is used e.g. for MIDI-triggered
+actions when they appear frequently and only the last action has to be in effect.
 
 
 ### Additional coroutine examples in the workspace

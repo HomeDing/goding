@@ -6,6 +6,12 @@
 // See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
 
 // Package actionQueue implements a simple in-process FIFO queue for action strings.
+
+// For queuing and dispatching actions more functionality like look-ahead is required so
+// the build-in go channel mechanism cannot be used and the
+// [/internal/actionqueue](/internal/actionqueue/actionqueue.go) is implementing a similar
+// mechanism FIFO mechanism especially for actions.
+
 package actionQueue
 
 import (
@@ -28,18 +34,78 @@ var (
 	mu sync.Mutex
 	// queue is the static FIFO buffer for action strings.
 	queue []string
+	// workerOnce starts the dispatcher only when the first action is queued.
+	workerOnce sync.Once
+	// wake signals the dispatcher that the queue may contain work.
+	wake = make(chan struct{}, 1)
 )
 
-// Add appends a new action to the FIFO buffer.
+// Add appends a new action to the FIFO buffer for asynchronous dispatch.
 //
 // This function is safe for concurrent use by multiple goroutines. It
-// performs a simple append which preserves FIFO ordering.
+// preserves FIFO ordering and starts the dispatcher when needed.
 func Add(action string) {
 	mu.Lock()
-	defer mu.Unlock()
-
 	// Append preserves FIFO order.
 	queue = append(queue, action)
+	mu.Unlock()
+
+	startWorker()
+	notifyWorker()
+}
+
+// AddOnce removes queued actions for the same target before appending action.
+// The target is the portion before '?', so parameter changes do not create
+// additional pending actions for the same element. It then schedules dispatch.
+func AddOnce(action string) {
+	target := actionTarget(action)
+
+	mu.Lock()
+	queue = append(removeActionsForTarget(queue, target), action)
+	mu.Unlock()
+
+	startWorker()
+	notifyWorker()
+}
+
+func actionTarget(action string) string {
+	target, _, _ := strings.Cut(action, "?")
+	return target
+}
+
+func removeActionsForTarget(actions []string, target string) []string {
+	kept := actions[:0]
+	for _, action := range actions {
+		if actionTarget(action) != target {
+			kept = append(kept, action)
+		}
+	}
+	clear(actions[len(kept):])
+	return kept
+}
+
+func startWorker() {
+	workerOnce.Do(func() {
+		go dispatchWorker()
+	})
+}
+
+func notifyWorker() {
+	select {
+	case wake <- struct{}{}:
+	default:
+	}
+}
+
+func dispatchWorker() {
+	for {
+		action, ok := GetNext()
+		if !ok {
+			<-wake
+			continue
+		}
+		DispatchNow(action)
+	}
 }
 
 // GetNext removes and returns the oldest action from the buffer.

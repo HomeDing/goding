@@ -10,7 +10,7 @@ package elements
 import "testing"
 
 func TestNewBaseElementInitializesDefaults(t *testing.T) {
-	el := NewBaseElement("lamp", "kitchen")
+	el := NewBaseElement("lamp", "kitchen").(*Base)
 
 	if got := el.GetKey(); got != "lamp/kitchen" {
 		t.Fatalf("expected key %q, got %q", "lamp/kitchen", got)
@@ -31,7 +31,7 @@ func TestNewBaseElementInitializesDefaults(t *testing.T) {
 }
 
 func TestBaseElementSetTracksKnownKeys(t *testing.T) {
-	el := NewBaseElement("lamp", "office")
+	el := NewBaseElement("lamp", "office").(*Base)
 	el.Config["name"] = "initial"
 
 	if ok := el.Set("name", "desk"); !ok {
@@ -57,7 +57,7 @@ func TestBaseElementSetTracksKnownKeys(t *testing.T) {
 }
 
 func TestBaseElementRejectsUnknownKeys(t *testing.T) {
-	el := NewBaseElement("lamp", "hall")
+	el := NewBaseElement("lamp", "hall").(*Base)
 
 	if ok := el.Set("unknown", "value"); ok {
 		t.Fatal("expected Set to return false for unknown keys")

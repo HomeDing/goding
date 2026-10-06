@@ -66,4 +66,35 @@ func TestAddAndFindUsePointerIdentity(t *testing.T) {
 
 }
 
+func TestFindAllMatchesElementKeys(t *testing.T) {
+	elementRegistry = map[string]common.Element{}
+
+	volume := &testElement{key: "volume/main"}
+	otherVolume := &testElement{key: "volume/secondary"}
+	midi := &testElement{key: "midi/controller"}
+	Register(volume)
+	Register(otherVolume)
+	Register(midi)
+
+	got := FindAll(`^volume/`)
+	if len(got) != 2 {
+		t.Fatalf("expected 2 matching elements, got %d", len(got))
+	}
+	if got[0] != volume || got[1] != otherVolume {
+		t.Fatalf("unexpected matching elements: %#v", got)
+	}
+}
+
+func TestFindAllReturnsEmptyForNoMatchOrInvalidRegexp(t *testing.T) {
+	elementRegistry = map[string]common.Element{}
+	Register(&testElement{key: "volume/main"})
+
+	if got := FindAll(`^midi/`); len(got) != 0 {
+		t.Fatalf("expected no matching elements, got %d", len(got))
+	}
+	if got := FindAll(`[invalid`); len(got) != 0 {
+		t.Fatalf("expected no matching elements for invalid regexp, got %d", len(got))
+	}
+}
+
 // End.

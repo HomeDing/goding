@@ -1,0 +1,46 @@
+<div class='card' u-control='dallas' id='${id}' microid='${id}' u-is='generic'><u-include ref='#cardHeader'></u-include>
+  <hr>
+  <div class='main' style='display:flex'>
+    <div style='flex:1'>
+      <div style='font-size:2rem'><span u-text='temperature'></span>&deg;C</div>
+      <div>Temperature</div>
+    </div>
+  </div>
+</div>
+<form method='dialog' class='card' u-control='timer' microid='${id}' u-is='timer'><u-include ref='#cardHeader'></u-include><span class='u-bool ux-value' u-active='value' style='top:2rem'></span>
+  <fieldset class='block btn-group'>
+    <legend>Mode</legend><label><input name='mode' u-value='mode' type='radio' value='off'>Off</label> <label><input name='mode' u-value='mode' type='radio' value='on'>On</label> <label><input name='mode' u-value='mode' type='radio' value='timer'>Timer</label>
+  </fieldset>
+  <div class='main'>
+    <div class='u-bar'><span class='pulse'></span> <span class='current'></span></div>
+  </div>
+  <div class='footer form-actions'><button u-action='start' value='1'>Start</button> <button u-action='next' value='1'>Next</button></div>
+</form>
+<div class='card' u-control='button' microid='${id}' u-is='button'>
+  <div class='main'><button u-text='title'></button></div>
+</div>
+<div class='card' u-control='pwmout' u-is='pwmout' microid='${id}'><u-include ref='#cardHeader'></u-include>
+  <div class='main' style='position:relative;min-height:5rem'><span class='ux-levelbar ux-value'></span>
+    <div style='font-size:2rem'><span u-text='value'></span> / <span u-text='range'></span></div>
+  </div>
+</div>
+<div class='card' u-control='display' u-is='display' microid='${id}'>
+  <div class='main' style='display:flex;align-items:center'><svg class='setconfig'>
+      <use href='./icons.svg#config' />
+    </svg> <svg class='icon' u-action='addpage' value='-1' style='margin:0;width:2rem'>
+      <use href='./icons.svg#minus'></use>
+    </svg>
+    <div class='display'><svg style='width:100%;height:100%'></svg></div><svg class='icon' u-action='addpage' value='1' style='margin:0;width:2rem'>
+      <use href='./icons.svg#plus'></use>
+    </svg>
+  </div>
+</div>
+<div class='card' u-control='displaylcd' u-is='generic' microid='${id}'>
+  <div class='main'>
+    <div class='display' grid='10' style='height:2em;width:20ch;font-family:monospace'></div>
+  </div>
+</div>
+<div class='card hidden' u-control='displaytext' u-is='displaytext' microid='${id}'></div>
+<div class='card hidden' u-control='displaydot' u-is='displaydot' microid='${id}'></div>
+<div class='card hidden' u-control='displayline' u-is='displayline' microid='${id}'></div>
+<div class='card hidden' u-control='displaybutton' u-is='displaybutton' microid='${id}'></div>#

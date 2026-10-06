@@ -15,8 +15,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/HomeDing/goding/internal/elements"
+	"github.com/HomeDing/goding/internal/elements/registry"
 )
 
 // Config stores all configured element types by type name.
@@ -36,6 +38,9 @@ type Element struct {
 
 // Storage contains the configuration loaded from config.json.
 var Storage Config
+
+var rawJSONMu sync.RWMutex
+var rawJSON string
 
 // Folder is the directory used for GoDing configuration files.
 var Folder string
@@ -88,6 +93,13 @@ func Load() (Config, error) {
 	return Storage, nil
 } // Load()
 
+// RawJSON returns the original JSON string loaded from config.json.
+func RawJSON() string {
+	rawJSONMu.RLock()
+	defer rawJSONMu.RUnlock()
+	return rawJSON
+}
+
 // unmarshalConfig populates Storage from a three-level JSON configuration string.
 func unmarshalConfig(data string) error {
 	var raw map[string]map[string]map[string]string
@@ -105,6 +117,9 @@ func unmarshalConfig(data string) error {
 	}
 
 	Storage = loaded
+	rawJSONMu.Lock()
+	rawJSON = data
+	rawJSONMu.Unlock()
 	return nil
 } // unmarshalConfig()
 
@@ -124,14 +139,8 @@ func (c Config) MarshalJSON() ([]byte, error) {
 func (c Config) CreateElements() {
 	for typeName, elementType := range c.ElementTypes {
 		for elementID, elementConfig := range elementType.Elements {
-			var element interface{ Set(string, string) bool }
-
-			switch strings.ToLower(typeName) {
-			case "volume":
-				element = elements.NewVolumeElement(elementID)
-			case "midi":
-				element = elements.NewMidiElement(elementID)
-			default:
+			element, err := elements.NewElement(typeName, elementID)
+			if err != nil {
 				slog.Warn("unsupported config element type", "type", typeName, "id", elementID)
 				continue
 			}
@@ -139,6 +148,7 @@ func (c Config) CreateElements() {
 			for property, value := range elementConfig.Properties {
 				element.Set(strings.ToLower(property), value)
 			}
+			registry.Register(element)
 		}
 	}
 } // CreateElements()

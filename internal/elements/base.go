@@ -9,6 +9,8 @@ package elements
 
 import (
 	"log/slog"
+
+	"github.com/HomeDing/goding/internal/common"
 )
 
 // Base provides the common behaviors shared by element implementations.
@@ -29,14 +31,19 @@ type Base struct {
 	Values map[string]string
 }
 
-func NewBaseElement(elType string, elId string) Base {
-	this := Base{
+func NewBaseElement(elType string, elId string) common.Element {
+	return newBaseElement(elType, elId)
+}
+
+func newBaseElement(elType string, elId string) *Base {
+	this := &Base{
 		elementType: elType,
 		elementID:   elId,
 		isActive:    false,
 		Config:      map[string]string{},
 		Values:      map[string]string{},
 	}
+	this.Config["key"] = MakeKey(elType, elId)
 	this.Config["active"] = "0"
 	return this
 }

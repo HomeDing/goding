@@ -13,7 +13,7 @@ import (
 	"strconv"
 
 	"github.com/HomeDing/goding/internal/audio"
-	"github.com/HomeDing/goding/internal/elements/registry"
+	"github.com/HomeDing/goding/internal/common"
 	"github.com/HomeDing/goding/internal/global"
 )
 
@@ -27,6 +27,12 @@ type Volume struct {
 	epName                  string
 	device                  *audio.DeviceInfo
 	session                 *audio.SessionInfo
+}
+
+// init registers the Volume element type with the element factory.
+// init() is called by the go runtime before main() and before any other package-level variables are initialized.
+func init() {
+	RegisterFactory("volume", NewVolumeElement)
 }
 
 // find the endpoint for one of the pre-defined keys from a textual input
@@ -43,7 +49,7 @@ type Volume struct {
 // 	return 0, errors.New("Unknown endpoint")
 // } // scanEndpointKnownKey()
 
-// Create a new VolumeElement instance with default configuration values and registers it in the registry.
+// NewVolumeElement creates a Volume element with its default configuration values.
 //
 // The endpoint to be controlled is defined by the "endpoint" parameter (default out:con)
 // as a string with colon separated elements (no space) like:
@@ -55,8 +61,8 @@ type Volume struct {
 // "out[put]:com[munication]" -- the current output device for voice communications.
 // "out[put]:mul[timedia]" -- the current output device for Music, movies, narration, and live music recording.
 // "in[put]:..."
-func NewVolumeElement(elementId string) *Volume {
-	v := &Volume{Base: NewBaseElement("volume", elementId)}
+func NewVolumeElement(elementId string) common.Element {
+	v := &Volume{Base: *newBaseElement("volume", elementId)}
 
 	// set initial / default configuration parameters
 	v.Config["min"] = "0"
@@ -70,7 +76,6 @@ func NewVolumeElement(elementId string) *Volume {
 	v.maximum = 100
 	v.value = 50
 
-	registry.Register(v)
 	return v
 } // NewVolumeElement()
 
