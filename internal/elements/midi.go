@@ -25,7 +25,7 @@ type Midi struct {
 // init() is called by the go runtime before main() and before any other package-level variables are initialized.
 func init() {
 	RegisterFactory("midi", NewMidiElement)
-}
+} // init()
 
 // NewMidiElement creates a Midi element with its default configuration values.
 func NewMidiElement(elementId string) common.Element {

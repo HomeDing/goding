@@ -50,8 +50,16 @@ func Add(action string) {
 	queue = append(queue, action)
 	mu.Unlock()
 
-	startWorker()
-	notifyWorker()
+	// start the worker only once, when the first action is added. Subsequent calls will not start additional workers.
+	workerOnce.Do(func() {
+		go dispatchWorker()
+	})
+
+	// Wake the worker without blocking if it is already scheduled to run.
+	select {
+	case wake <- struct{}{}:
+	default:
+	}
 }
 
 // AddOnce removes queued actions for the same target before appending action.
@@ -61,11 +69,9 @@ func AddOnce(action string) {
 	target := actionTarget(action)
 
 	mu.Lock()
-	queue = append(removeActionsForTarget(queue, target), action)
+	queue = removeActionsForTarget(queue, target)
 	mu.Unlock()
-
-	startWorker()
-	notifyWorker()
+	Add(action)
 }
 
 func actionTarget(action string) string {
@@ -73,6 +79,9 @@ func actionTarget(action string) string {
 	return target
 }
 
+// removeActionsForTarget removes all actions from the queue that match the given target.
+// to avoid repeated actions for the same target.
+// It returns a new slice with only the actions that do not match the target.
 func removeActionsForTarget(actions []string, target string) []string {
 	kept := actions[:0]
 	for _, action := range actions {
@@ -82,21 +91,12 @@ func removeActionsForTarget(actions []string, target string) []string {
 	}
 	clear(actions[len(kept):])
 	return kept
-}
+} // removeActionsForTarget()
 
-func startWorker() {
-	workerOnce.Do(func() {
-		go dispatchWorker()
-	})
-}
-
-func notifyWorker() {
-	select {
-	case wake <- struct{}{}:
-	default:
-	}
-}
-
+// dispatchWorker is a long-running goroutine that processes actions from the queue.
+// It waits for new actions to be added and dispatches them in FIFO order.
+// The worker will continue running until the program exits, but it will
+// only wake up when there are actions to process.
 func dispatchWorker() {
 	for {
 		action, ok := GetNext()
@@ -106,7 +106,7 @@ func dispatchWorker() {
 		}
 		DispatchNow(action)
 	}
-}
+} // dispatchWorker()
 
 // GetNext removes and returns the oldest action from the buffer.
 //

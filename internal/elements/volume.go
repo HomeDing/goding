@@ -33,21 +33,7 @@ type Volume struct {
 // init() is called by the go runtime before main() and before any other package-level variables are initialized.
 func init() {
 	RegisterFactory("volume", NewVolumeElement)
-}
-
-// find the endpoint for one of the pre-defined keys from a textual input
-// name is already in clean state (lowercase etc.)
-// func scanEndpointKnownKey(name string) (uint32, error) {
-// 	switch {
-// 	case name[0:3] == "con":
-// 		return wca.EConsole, nil
-// 	case name[0:3] == "com":
-// 		return wca.ECommunications, nil
-// 	case name[0:3] == "mul":
-// 		return wca.EMultimedia, nil
-// 	}
-// 	return 0, errors.New("Unknown endpoint")
-// } // scanEndpointKnownKey()
+} // init()
 
 // NewVolumeElement creates a Volume element with its default configuration values.
 //
@@ -56,7 +42,6 @@ func init() {
 // [out|in]... : [con|com|mul]... or
 // [app]...: `application` name
 // [win]... : [top]
-
 // "out[put]:con[sole]" -- the current output device for Games, system notification sounds and voice commands
 // "out[put]:com[munication]" -- the current output device for voice communications.
 // "out[put]:mul[timedia]" -- the current output device for Music, movies, narration, and live music recording.
@@ -208,13 +193,5 @@ func (e *Volume) Start() {
 	e.Values["value"] = strconv.Itoa(e.value)
 	slog.Debug("volume.start", "currentVolume", e.value)
 }
-
-// no extra code for state needed.
-// func (e *Volume) State() map[string]string {
-// 	res := map[string]string{}
-// 	maps.Copy(res, e.Config)
-// 	res["name"] = e.name
-// 	return res
-// }
 
 // End.

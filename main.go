@@ -181,11 +181,6 @@ func main() {
 	global.Display, _ = osd.New()
 	global.Display.SetTimeout(2)
 
-	// init all commands , don't start them yet, just register them
-	help.Init()
-	serve.Init()
-	midi.Init()
-
 	if len(args) == 1 {
 		slog.Info("main no parameters, defaulting to 'midi serve'")
 		args = append(args, "midi", "serve")

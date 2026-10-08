@@ -30,15 +30,13 @@ var helpCommand string = ""
 // help command parameters
 var helpFlags *flag.FlagSet
 
-// Initialize the serve command and its flags in the init function, which is called before main.
+// Initialize the serve command and its flags in the init function, which is called before main by.
 // This allows us to set up the command and its flags before parsing the command-line arguments in main.
-func Init() {
-	slog.Debug("help.Init()")
-
+func init() {
 	// define the flags for the serve command
 	helpFlags = flag.NewFlagSet("help", flag.ExitOnError)
 	helpFlags.BoolVar(&global.VerboseFlag, "verbose", global.VerboseFlag, "enable verbose logging")
-} // Init()
+} // init()
 
 func Help() {
 	slog.Debug("Help.Help()")

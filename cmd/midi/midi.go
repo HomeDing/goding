@@ -77,16 +77,14 @@ func normalizeMidiMessage(midiMsg string) string {
 
 // Initialize the midi command and its flags in the init function, which is called before main.
 // This allows us to set up the command and its flags before parsing the command-line arguments in main.
-func Init() {
-	slog.Debug("midi.Init()")
-
+func init() {
 	// always good to close the driver at the end
 	defer midi.CloseDriver()
 
 	// define the flags for the midi command
 	midiFlags = flag.NewFlagSet("midi", flag.ExitOnError)
 	midiFlags.BoolVar(&global.VerboseFlag, "verbose", global.VerboseFlag, "enable verbose logging")
-} // Init()
+} // init()
 
 func Help() {
 	slog.Debug("Midi.Help()")

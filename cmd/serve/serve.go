@@ -37,15 +37,13 @@ var BaseURL string
 
 // Initialize the serve command and its flags in the Init function, which is called before main.
 // This allows us to set up the command and its flags before parsing the command-line arguments in main.
-func Init() {
-	slog.Debug("serve.Init()")
-
+func init() {
 	// define the flags for the serve command
 	serveFlags = flag.NewFlagSet("serve", flag.ExitOnError)
 	serveFlags.IntVar(&global.Port, "port", 3333, "port to listen on")
 	serveFlags.StringVar(&global.WebFolder, "folder", "./web", "folder to serve static files from")
 	serveFlags.BoolVar(&global.VerboseFlag, "verbose", global.VerboseFlag, "enable verbose logging")
-}
+} // init()
 
 func Help() {
 	slog.Debug("serve.Help()")
