@@ -168,8 +168,8 @@ func main() {
 	slog.SetLogLoggerLevel(slog.LevelInfo)
 
 	// Enable the following lines to get debug output from the start
-	slog.SetLogLoggerLevel(slog.LevelDebug)
-	global.VerboseFlag = true
+	// slog.SetLogLoggerLevel(slog.LevelDebug)
+	// global.VerboseFlag = true
 
 	args := os.Args
 	slog.Info("GoDing starting...")

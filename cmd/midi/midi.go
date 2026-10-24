@@ -19,13 +19,10 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	actionQueue "github.com/HomeDing/goding/internal/actionqueue"
 	"github.com/HomeDing/goding/internal/global"
-
-	"gitlab.com/gomidi/midi/v2"
-	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv"
+	midiDevices "github.com/HomeDing/goding/internal/midi"
 )
 
 // Package-level variables for managing the MIDI listener state and registered actions.
@@ -78,9 +75,6 @@ func normalizeMidiMessage(midiMsg string) string {
 // Initialize the midi command and its flags in the init function, which is called before main.
 // This allows us to set up the command and its flags before parsing the command-line arguments in main.
 func init() {
-	// always good to close the driver at the end
-	defer midi.CloseDriver()
-
 	// define the flags for the midi command
 	midiFlags = flag.NewFlagSet("midi", flag.ExitOnError)
 	midiFlags.BoolVar(&global.VerboseFlag, "verbose", global.VerboseFlag, "enable verbose logging")
@@ -124,71 +118,27 @@ func Register(midiMsg string, action string) {
 func listen(quitChan chan bool, wg *sync.WaitGroup) error {
 
 	slog.Debug("midi.listen()")
+	defer wg.Done()
+	defer func() { isStarted = false }()
 
-	in, err := midi.FindInPort("LPD8 mk2")
-	if err != nil {
-		fmt.Println("can't find LPD8 mk2")
-		return nil
-
-	} else {
-
-		// Listen to the MIDI messages of type NoteOn, NoteOff, ControlChange, and ProgramChange on the specified input port.
-		// and create a midi message string to be used as a key for the registered actions.
-		stop, err := midi.ListenTo(in, func(msg midi.Message, timestampms int32) {
-			var ch, key, value uint8
-			var ctl uint8
-			var midiMsg string
-
-			// [Channel] <Message> <Note/Control> <Value>
-			value = 0
-
-			switch {
-			case msg.GetNoteStart(&ch, &key, &value):
-				midiMsg = fmt.Sprintf("[%v] ON %s", ch, midi.Note(key))
-
-			case msg.GetNoteEnd(&ch, &key):
-				midiMsg = fmt.Sprintf("[%v] OFF %s", ch, midi.Note(key))
-
-			case msg.GetControlChange(&ch, &ctl, &value):
-				midiMsg = fmt.Sprintf("[%v] CC %v", ch, ctl)
-
-			case msg.GetProgramChange(&ch, &value):
-				midiMsg = fmt.Sprintf("[%v] PC %v", ch, value)
-
-			default:
-				// ignore !
-			}
-
-			midiMsg = normalizeMidiMessage(midiMsg)
-
-			var a = actionsRegistry[midiMsg]
-			if len(a) > 0 {
-				slog.Info("midi.action", "message", midiMsg, "value", value, "action", a)
-				a = strings.ReplaceAll(a, "$v", strconv.Itoa(int(value)))
-				actionQueue.AddOnce(a)
-
-			} else {
-				slog.Info("midi.action", "message", midiMsg, "value", value)
-			}
-		}) // midi.ListenTo
-
-		// midi.UseSysEx() not required.
-
-		if err != nil {
-			slog.Error("midi.listen", "error", err)
-			return (nil)
+	err := midiDevices.ListenInputDevice("LPD8 mk2", quitChan, func(message midiDevices.Message) {
+		midiMsg := normalizeMidiMessage(message.String())
+		action := actionsRegistry[midiMsg]
+		if len(action) > 0 {
+			slog.Info("midi.action", "message", midiMsg, "value", message.Value, "action", action)
+			action = strings.ReplaceAll(action, "$v", strconv.Itoa(int(message.Value)))
+			actionQueue.AddOnce(action)
+			return
 		}
 
-		// wait for quit signal
-		<-quitChan
-
-		stop() // stop the midi listener
-
-		slog.Debug("midi.stopped!")
-		wg.Done()
-		isStarted = false
+		slog.Info("midi.action", "message", midiMsg, "value", message.Value)
+	})
+	if err != nil {
+		slog.Error("midi.listen", "error", err)
+		return err
 	}
 
+	slog.Debug("midi.stopped!")
 	return nil
 }
 
@@ -215,8 +165,16 @@ func Stop() {
 func List() error {
 	slog.Debug("midi.List()")
 
-	fmt.Println("in ports: \n" + midi.GetInPorts().String())
-	// fmt.Println("out ports: \n" + midi.GetOutPorts().String())
+	fmt.Println("in ports:")
+	devices := midiDevices.ListInputDevices()
+	if len(devices) == 0 {
+		fmt.Println("(none)")
+		return nil
+	}
+
+	for _, device := range devices {
+		fmt.Printf("%d: %s\n", device.ID, device.Name)
+	}
 
 	return nil
 }
@@ -241,25 +199,6 @@ func (ml *MIDIListener) RegisterHandler(eventType string, handler MIDIEventHandl
 	slog.Debug("MIDI handler registered", slog.String("eventType", eventType))
 }
 
-// Start begins listening for MIDI events on the specified input port
-func (ml *MIDIListener) Start(inputPort int) error {
-
-	ml.mu.Lock()
-	if ml.isRunning {
-		ml.mu.Unlock()
-		slog.Warn("MIDI listener already running")
-		return nil
-	}
-	ml.isRunning = true
-	ml.mu.Unlock()
-
-	slog.Info("Starting MIDI listener", slog.Int("inputPort", inputPort))
-
-	// Run the listen loop in this goroutine (caller handles the blocking)
-	ml.listenLoop(inputPort)
-	return nil
-}
-
 // Stop stops the MIDI listener
 func (ml *MIDIListener) Stop() {
 	ml.mu.Lock()
@@ -279,49 +218,6 @@ func (ml *MIDIListener) IsRunning() bool {
 	ml.mu.RLock()
 	defer ml.mu.RUnlock()
 	return ml.isRunning
-}
-
-// listenLoop continuously reads MIDI events from the input port
-func (ml *MIDIListener) listenLoop(inputPort int) {
-
-	defer func() {
-		ml.mu.Lock()
-		ml.isRunning = false
-		ml.mu.Unlock()
-		slog.Info("MIDI listener stopped")
-	}()
-
-	// Get available MIDI input ports
-	in, err := midi.FindInPort("*")
-	if err != nil {
-		slog.Error("Failed to find MIDI input ports", slog.Any("error", err))
-		return
-	}
-
-	// Open the MIDI input port
-	stop, err := midi.ListenTo(in, func(msg midi.Message, timestampms int32) {
-		var bt []byte
-		var ch, key, vel uint8
-		switch {
-		case msg.GetSysEx(&bt):
-			fmt.Printf("got sysex: % X\n", bt)
-		case msg.GetNoteStart(&ch, &key, &vel):
-			fmt.Printf("starting note %s on channel %v with velocity %v\n", midi.Note(key), ch, vel)
-		case msg.GetNoteEnd(&ch, &key):
-			fmt.Printf("ending note %s on channel %v\n", midi.Note(key), ch)
-		default:
-			// ignore
-		}
-	}, midi.UseSysEx())
-
-	if err != nil {
-		fmt.Printf("ERROR: %s\n", err)
-		return
-	}
-
-	time.Sleep(time.Second * 5)
-
-	stop()
 }
 
 // End.
