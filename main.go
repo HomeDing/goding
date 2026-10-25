@@ -146,10 +146,6 @@ func initTray() *systray.SystemTray {
 		quitChannel <- syscall.SIGTERM
 	})
 
-	// menu.AddSeparator()
-	// menu.AddCheckbox("Check me", false, func() { slog.Info("Checkbox toggled") })
-	// menu.AddSeparator()
-
 	tray.SetIcon(assets.GodingIcon).
 		SetDarkModeIcon(assets.GodingIcon).
 		SetTooltip("GoDing!").
@@ -168,14 +164,10 @@ func main() {
 	slog.SetLogLoggerLevel(slog.LevelInfo)
 
 	// Enable the following lines to get debug output from the start
-	// slog.SetLogLoggerLevel(slog.LevelDebug)
-	// global.VerboseFlag = true
+	slog.SetLogLoggerLevel(slog.LevelDebug)
+	global.VerboseFlag = true
 
 	args := os.Args
-	if len(args) > 1 && args[1] == "list" {
-		midi.List()
-		return
-	}
 
 	slog.Info("GoDing starting...")
 
@@ -191,10 +183,14 @@ func main() {
 		args = append(args, "midi", "serve")
 	}
 
+	// commands that do not need to start the tray and the main window event loop can be handled here.
 	if args[1] == "help" {
 		helpMode = true
 		help.ParseArguments(args[2:])
 		help.Run(&activeCommands)
+
+	} else if args[1] == "list" {
+		midi.List()
 
 	} else {
 		parseAndRun(args[1:])

@@ -5,11 +5,12 @@
 // This work is licensed under a BSD style license.
 // See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
 
-// Command to start the midi listener
-// The midi package provides functionality for handling MIDI events, including listening for MIDI messages,
-// registering handlers for specific events, and managing the lifecycle of a MIDI listener.
-// It uses the gomidi library to interface with MIDI devices and supports concurrent access through mutexes.
-// This file is part of the OpenSource GoDing project <https://github.com/HomeDing/goding>.
+// Command to listen for midi messages.
+// This package provides functionality for
+// * listening for MIDI messages,
+// * registering handlers for specific events,
+// * managing the lifecycle of a MIDI listener.
+// It uses the internal/midi package to interface with MIDI devices.
 package midi
 
 import (
@@ -78,6 +79,8 @@ func init() {
 	// define the flags for the midi command
 	midiFlags = flag.NewFlagSet("midi", flag.ExitOnError)
 	midiFlags.BoolVar(&global.VerboseFlag, "verbose", global.VerboseFlag, "enable verbose logging")
+	midiFlags.StringVar(&global.MidiDeviceName, "device", global.MidiDeviceName, "device name to listen for midi messages")
+
 } // init()
 
 func Help() {
@@ -121,7 +124,7 @@ func listen(quitChan chan bool, wg *sync.WaitGroup) error {
 	defer wg.Done()
 	defer func() { isStarted = false }()
 
-	err := midiDevices.ListenInputDevice("LPD8 mk2", quitChan, func(message midiDevices.Message) {
+	err := midiDevices.ListenInputDevice(global.MidiDeviceName, quitChan, func(message midiDevices.Message) {
 		midiMsg := normalizeMidiMessage(message.String())
 		action := actionsRegistry[midiMsg]
 		if len(action) > 0 {
@@ -173,7 +176,7 @@ func List() error {
 	}
 
 	for _, device := range devices {
-		fmt.Printf("%d: %s\n", device.ID, device.Name)
+		fmt.Printf("%d: '%s'\n", device.ID, device.Name)
 	}
 
 	return nil

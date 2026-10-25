@@ -119,9 +119,10 @@ func ListenInputDevice(deviceName string, stop <-chan bool, handler func(Message
 		return fmt.Errorf("MIDI message handler is nil")
 	}
 
+	deviceName = strings.ToLower(deviceName)
 	var device *InputDevice
 	for _, candidate := range ListInputDevices() {
-		if strings.EqualFold(candidate.Name, deviceName) {
+		if strings.Contains(strings.ToLower(candidate.Name), deviceName) {
 			device = &candidate
 			break
 		}
