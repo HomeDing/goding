@@ -66,6 +66,13 @@ For if statements the closing bracket will be the closing bracket of the `else` 
   // End.
   ```
 
+### TODO Tracking
+
+* Use the root `_todo.md` as the checklist for unfinished work explicitly marked with `TODO:` in source code.
+* When adding a source-code `TODO:`, add a matching unchecked item to `_todo.md` and include the source file path.
+* When completing a TODO, remove its source marker and remove or check off the matching `_todo.md` item so the two stay synchronized.
+* Do not add speculative tasks to `_todo.md`; checklist items should be grounded in source `TODO:` markers.
+
 ### Logging and Output
 
 Use structured logging via `slog` for all logging and HTTP requests.

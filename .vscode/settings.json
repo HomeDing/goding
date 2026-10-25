@@ -5,6 +5,7 @@
     "COINIT",
     "diegosz",
     "epts",
+    "gogpu",
     "gomidi",
     "goroutines",
     "Mixy",
@@ -14,6 +15,7 @@
     "procs",
     "STGM",
     "timedia",
-    "Vtbl"
+    "Vtbl",
+    "winma"
   ]
 }

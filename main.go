@@ -172,6 +172,11 @@ func main() {
 	// global.VerboseFlag = true
 
 	args := os.Args
+	if len(args) > 1 && args[1] == "list" {
+		midi.List()
+		return
+	}
+
 	slog.Info("GoDing starting...")
 
 	// Start the tray registration and the main window event loop.

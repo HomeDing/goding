@@ -1,4 +1,4 @@
-// winmm.go - Windows MIDI input device enumeration
+// midi.go - Windows MIDI input device enumeration
 //
 // This file is part of the OpenSource GoDing project <https://github.com/HomeDing/goding>.
 // Copyright (c) 2026-2026 by Matthias Hertel, <http://www.mathertel.de>
@@ -18,7 +18,7 @@ import (
 	"syscall"
 	"unicode/utf16"
 
-	winmm "github.com/deploymenttheory/go-bindings-win32/bindings/win32/media/audio"
+	winma "github.com/deploymenttheory/go-bindings-win32/bindings/win32/media/audio"
 )
 
 const mmMIMData uint32 = 0x03C3
@@ -92,12 +92,12 @@ var midiInCallback = syscall.NewCallback(func(_ uintptr, message uint32, instanc
 
 // ListInputDevices returns the available MIDI input devices.
 func ListInputDevices() []InputDevice {
-	deviceCount := winmm.MidiInGetNumDevs()
+	deviceCount := winma.MidiInGetNumDevs()
 	devices := make([]InputDevice, 0, deviceCount)
 
 	for deviceID := uint32(0); deviceID < deviceCount; deviceID++ {
-		var caps winmm.MIDIINCAPSW
-		result := winmm.MidiInGetDevCaps(uintptr(deviceID), &caps, uint32(len(caps.Data)))
+		var caps winma.MIDIINCAPSW
+		result := winma.MidiInGetDevCaps(uintptr(deviceID), &caps, uint32(len(caps.Data)))
 		if result != 0 {
 			slog.Warn("midi device capabilities unavailable", "device", deviceID, "result", result)
 			continue
@@ -133,26 +133,26 @@ func ListenInputDevice(deviceName string, stop <-chan bool, handler func(Message
 	listener := &inputListener{handler: handler}
 	listenerID := nextInputListenerID.Add(1)
 	inputListeners.Store(listenerID, listener)
-	var handle winmm.HMIDIIN
-	result := winmm.MidiInOpen(&handle, device.ID, midiInCallback, listenerID, winmm.CALLBACK_FUNCTION)
+	var handle winma.HMIDIIN
+	result := winma.MidiInOpen(&handle, device.ID, midiInCallback, listenerID, winma.CALLBACK_FUNCTION)
 	if result != 0 {
 		inputListeners.Delete(listenerID)
 		return fmt.Errorf("midiInOpen failed with MMRESULT %d", result)
 	}
 	defer func() {
-		if result := winmm.MidiInStop(handle); result != 0 {
+		if result := winma.MidiInStop(handle); result != 0 {
 			slog.Warn("midiInStop failed", "result", result)
 		}
-		if result := winmm.MidiInReset(handle); result != 0 {
+		if result := winma.MidiInReset(handle); result != 0 {
 			slog.Warn("midiInReset failed", "result", result)
 		}
-		if result := winmm.MidiInClose(handle); result != 0 {
+		if result := winma.MidiInClose(handle); result != 0 {
 			slog.Error("midiInClose failed", "result", result)
 		}
 		inputListeners.Delete(listenerID)
 	}()
 
-	if result := winmm.MidiInStart(handle); result != 0 {
+	if result := winma.MidiInStart(handle); result != 0 {
 		return fmt.Errorf("midiInStart failed with MMRESULT %d", result)
 	}
 
