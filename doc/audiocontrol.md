@@ -1,9 +1,9 @@
 # Audio Control
 
-* using Window OLE
+* using Windows Core Audio COM interfaces
 
-* `github.com/HomeDing/goding/internal/audiocontrol` adds level ob abstraction to avoid OLE specific implementation in other packages
-* `github.com/MixyLabs/go-wca/pkg/wca` enables using the OLE Interfaces for Windows Windows specific Core Audio API
+* `github.com/HomeDing/goding/internal/audio` provides an abstraction over the Windows audio interfaces
+* `github.com/deploymenttheory/go-bindings-win32` provides the generated Win32 and COM bindings
 
 ## Windows OLE Interfaces
 
@@ -11,8 +11,6 @@ To use the window specific Core Audio API, the relevant OLE interfaces in use ar
 in the following diagram:
 
 ``` txt
-
-https://github.com/degubites/go-wca
 
 device volume
 

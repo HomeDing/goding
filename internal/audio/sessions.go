@@ -5,27 +5,20 @@
 // This work is licensed under a BSD style license.
 // See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
 
-// This package provides a wrapper around OS audio APIs so the
-// rest of the project does not have to deal with `ole` or `wca` specific directly.
-// Every call will initialize OLE (CoInitializeEx) and uninitialize OLE (CoUninitialize)
-// as goroutines are not bound to threads.
+// This package provides a wrapper around OS audio APIs without exposing COM interfaces.
 package audio
 
 import (
-	// "errors"
 	"errors"
 	"log/slog"
-	"unsafe"
-
-	"github.com/MixyLabs/go-wca/pkg/wca"
-	"github.com/go-ole/go-ole"
-
 	"strings"
+
+	win32 "github.com/deploymenttheory/go-bindings-win32/bindings/runtime/win32"
+	w32audio "github.com/deploymenttheory/go-bindings-win32/bindings/win32/media/audio"
+	win32com "github.com/deploymenttheory/go-bindings-win32/bindings/win32/system/com"
 )
 
-// The DeviceInfo struct saves public information about a corresponding device.
-//   - PID -- the internal ID
-//   - Name -- A friendly name, also used for specifying a device like "DELL U3223QE (Intel(R) Display-Audio)"
+// SessionInfo describes an audio session and its owning process.
 type SessionInfo struct {
 	EndpointInfo
 	PID         uint32
@@ -33,295 +26,198 @@ type SessionInfo struct {
 	Active      bool
 }
 
-// ===== internal functions =====
+func sessionEnumerator() (*w32audio.IAudioSessionEnumerator, func(), error) {
+	device, deviceCleanup, err := defaultDevice(Output)
+	if err != nil {
+		return nil, nil, err
+	}
 
-// Create a List of audio sessions on the default device matching match.
-func matchSessions(match string) ([]SessionInfo, error) {
-	var result []SessionInfo
-	match = strings.ToLower(match)
+	var unknown *win32.IUnknown
+	if err := device.Activate(&w32audio.IID_IAudioSessionManager2, win32com.CLSCTX_ALL, nil, &unknown); err != nil {
+		deviceCleanup()
+		return nil, nil, err
+	}
+	if unknown == nil {
+		deviceCleanup()
+		return nil, nil, errors.New("activate audio session manager returned nil")
+	}
+	manager := win32.Cast[w32audio.IAudioSessionManager2](unknown)
 
-	// Initialize COM
-	if oleCleanup, err := oleInit(); err != nil {
-		return nil, err
+	sessions, err := manager.GetSessionEnumerator()
+	if err != nil {
+		manager.Release()
+		deviceCleanup()
+		return nil, nil, err
+	}
+	if sessions == nil {
+		manager.Release()
+		deviceCleanup()
+		return nil, nil, errors.New("get audio session enumerator returned nil")
+	}
+
+	cleanup := func() {
+		sessions.Release()
+		manager.Release()
+		deviceCleanup()
+	}
+	return sessions, cleanup, nil
+}
+
+func sessionInfoAt(sessions *w32audio.IAudioSessionEnumerator, index int32) (SessionInfo, error) {
+	var control *w32audio.IAudioSessionControl
+	if err := sessions.GetSession(index, &control); err != nil {
+		return SessionInfo{}, err
+	}
+	if control == nil {
+		return SessionInfo{}, errors.New("get audio session returned nil")
+	}
+	defer control.Release()
+
+	control2, err := win32.QueryInterface[w32audio.IAudioSessionControl2](control, &w32audio.IID_IAudioSessionControl2)
+	if err != nil {
+		return SessionInfo{}, err
+	}
+	defer control2.Release()
+
+	info := SessionInfo{EndpointInfo: EndpointInfo{Flow: "app"}}
+	info.SystemSound = control2.IsSystemSoundsSession() == nil
+	if err := control2.GetProcessId(&info.PID); err != nil {
+		return SessionInfo{}, err
+	}
+	var state w32audio.AudioSessionState
+	if err := control2.GetState(&state); err != nil {
+		return SessionInfo{}, err
+	}
+	info.Active = state == w32audio.AudioSessionStateActive
+
+	if info.SystemSound {
+		info.Name = "System sounds"
 	} else {
-		defer oleCleanup()
+		info.Name, _ = FriendlyProcessName(info.PID)
 	}
+	return info, nil
+}
 
-	// Create enumerator
-	var deviceEnum *wca.IMMDeviceEnumerator
-	if err := wca.CoCreateInstance(wca.CLSID_MMDeviceEnumerator, 0, ole.CLSCTX_ALL, wca.IID_IMMDeviceEnumerator, &deviceEnum); err != nil {
-		return nil, err
-	}
-	defer deviceEnum.Release()
-
-	// Get default output device (Console role)
-	var mmd *wca.IMMDevice
-	if err := deviceEnum.GetDefaultAudioEndpoint(wca.ERender, wca.EConsole, &mmd); err != nil {
-		return nil, err
-	}
-	defer mmd.Release()
-
-	var sm2 *wca.IAudioSessionManager2
-	if err := mmd.Activate(wca.IID_IAudioSessionManager2, wca.CLSCTX_ALL, nil, &sm2); err != nil {
-		return nil, err
-	}
-	defer sm2.Release()
-
-	// get its IAudioSessionEnumerator
-	var sessionEnumerator *wca.IAudioSessionEnumerator
-	if err := sm2.GetSessionEnumerator(&sessionEnumerator); err != nil {
-		return nil, err
-	}
-	defer sessionEnumerator.Release()
-
-	var sessionCount int
-	if err := sessionEnumerator.GetCount(&sessionCount); err != nil {
+func simpleVolumeForPID(sessions *w32audio.IAudioSessionEnumerator, pid uint32) (*w32audio.ISimpleAudioVolume, error) {
+	var count int32
+	if err := sessions.GetCount(&count); err != nil {
 		return nil, err
 	}
 
-	result = make([]SessionInfo, 0, sessionCount)
-
-	// for each session:
-	// https://github.com/omriharel/deej/blob/9c0307b96341538ec46f18d2e9b18aaa84441175/pkg/deej/session_finder_windows.go#L445
-	for sessionIdx := 0; sessionIdx < sessionCount; sessionIdx++ {
-
-		var audioSessionControl *wca.IAudioSessionControl
-		if err := sessionEnumerator.GetSession(sessionIdx, &audioSessionControl); err != nil {
-			slog.Info("GetSession Bad Index")
+	for index := int32(0); index < count; index++ {
+		var control *w32audio.IAudioSessionControl
+		if err := sessions.GetSession(index, &control); err != nil {
+			return nil, err
+		}
+		if control == nil {
+			return nil, errors.New("get audio session returned nil")
+		}
+		control2, err := win32.QueryInterface[w32audio.IAudioSessionControl2](control, &w32audio.IID_IAudioSessionControl2)
+		if err != nil {
+			control.Release()
 			return nil, err
 		}
 
-		// query its IAudioSessionControl2
-		var audioSessionControl2 *wca.IAudioSessionControl2
-		if dispatch, err := audioSessionControl.QueryInterface(wca.IID_IAudioSessionControl2); err != nil {
-			slog.Error("Failed IAudioSessionControl2", "error", err, "sessionIdx", sessionIdx)
-			audioSessionControl.Release()
+		var sessionPID uint32
+		err = control2.GetProcessId(&sessionPID)
+		if err != nil {
+			control2.Release()
+			control.Release()
 			return nil, err
-
-		} else {
-			// receive a useful object instead of our dispatch
-			audioSessionControl2 = (*wca.IAudioSessionControl2)(unsafe.Pointer(dispatch))
+		}
+		if sessionPID == pid {
+			volume, queryErr := win32.QueryInterface[w32audio.ISimpleAudioVolume](control2, &w32audio.IID_ISimpleAudioVolume)
+			control2.Release()
+			control.Release()
+			return volume, queryErr
 		}
 
-		var si = SessionInfo{
-			EndpointInfo: EndpointInfo{
-				Flow: "app",
-			},
+		control2.Release()
+		control.Release()
+	}
+	return nil, errors.New("PID has no audio session")
+}
+
+func matchSessions(match string) ([]SessionInfo, error) {
+	match = strings.ToLower(match)
+	sessions, cleanup, err := sessionEnumerator()
+	if err != nil {
+		return nil, err
+	}
+	defer cleanup()
+
+	var count int32
+	if err := sessions.GetCount(&count); err != nil {
+		return nil, err
+	}
+
+	result := make([]SessionInfo, 0, int(count))
+	for index := int32(0); index < count; index++ {
+		info, err := sessionInfoAt(sessions, index)
+		if err != nil {
+			slog.Info("GetSession Bad Index", "error", err, "sessionIdx", index)
+			return nil, err
 		}
-
-		si.SystemSound = audioSessionControl2.IsSystemSoundsSession() == nil
-		audioSessionControl2.GetProcessId(&si.PID)
-		audioSessionControl2.GetDisplayName(&si.Name)
-		var sState uint32
-		audioSessionControl2.GetState(&sState)
-		si.Active = (sState == wca.AudioSessionStateActive)
-
-		if si.SystemSound {
-			si.Name = "System sounds"
-		} else {
-			si.Name, _ = FriendlyProcessName(si.PID)
+		if len(info.Name) > 0 && (match == "" || strings.Contains(strings.ToLower(info.Name), match)) {
+			result = append(result, info)
 		}
-
-		if len(si.Name) > 0 && (match == "" || strings.Contains(strings.ToLower(si.Name), match)) {
-			result = append(result, si)
-		}
-
-		// Release OLE stuff from inner loop
-		// simpleAudioVolume.Release()
-		audioSessionControl2.Release()
-		audioSessionControl.Release()
-	} // for
-
+	}
 	return result, nil
+}
 
-} // matchSessions()
-
-// ===== Public functions =====
-
-// Create a List of all active audio sessions on the default device.
+// ListSessions returns audio sessions on the default output device.
 func ListSessions() ([]SessionInfo, error) {
 	return matchSessions("")
-} // ListSessions()
+}
 
 func FindSession(match string) *SessionInfo {
 	sessions, _ := matchSessions(match)
-
 	for _, session := range sessions {
 		return &session
-	} // for
-
+	}
 	return nil
-} // FindSession()
+}
 
 func (s *SessionInfo) GetVolume() (int, error) {
-
-	// Initialize COM
-	if oleCleanup, err := oleInit(); err != nil {
-		return 0, err
-	} else {
-		defer oleCleanup()
-	}
-
-	// Create enumerator
-	var deviceEnum *wca.IMMDeviceEnumerator
-	if err := wca.CoCreateInstance(wca.CLSID_MMDeviceEnumerator, 0, ole.CLSCTX_ALL, wca.IID_IMMDeviceEnumerator, &deviceEnum); err != nil {
+	sessions, cleanup, err := sessionEnumerator()
+	if err != nil {
 		return 0, err
 	}
-	defer deviceEnum.Release()
+	defer cleanup()
 
-	// Get default output device (Console role)
-	var mmd *wca.IMMDevice
-	if err := deviceEnum.GetDefaultAudioEndpoint(wca.ERender, wca.EConsole, &mmd); err != nil {
+	volume, err := simpleVolumeForPID(sessions, s.PID)
+	if err != nil {
 		return 0, err
 	}
-	defer mmd.Release()
+	defer volume.Release()
 
-	var sm2 *wca.IAudioSessionManager2
-	if err := mmd.Activate(wca.IID_IAudioSessionManager2, wca.CLSCTX_ALL, nil, &sm2); err != nil {
+	var level float32
+	if err := volume.GetMasterVolume(&level); err != nil {
 		return 0, err
 	}
-	defer sm2.Release()
-
-	// get its IAudioSessionEnumerator
-	var sessionEnumerator *wca.IAudioSessionEnumerator
-	if err := sm2.GetSessionEnumerator(&sessionEnumerator); err != nil {
-		return 0, err
-	}
-	defer sessionEnumerator.Release()
-
-	var sessionCount int
-	if err := sessionEnumerator.GetCount(&sessionCount); err != nil {
-		return 0, err
-	}
-	// slog.Debug("GetSession", slog.Int("sessionCount", sessionCount))
-
-	for sessionIdx := 0; sessionIdx < sessionCount; sessionIdx++ {
-
-		var audioSessionControl *wca.IAudioSessionControl
-		if err := sessionEnumerator.GetSession(sessionIdx, &audioSessionControl); err != nil {
-			slog.Info("GetSession Bad Index")
-			return 0, err
-		}
-
-		// query its IAudioSessionControl2
-		dispatch, err := audioSessionControl.QueryInterface(wca.IID_IAudioSessionControl2)
-		if err != nil {
-			slog.Error("Failed IAudioSessionControl2", "error", err, "sessionIdx", sessionIdx)
-			return 0, err
-		}
-
-		// receive a useful object instead of our dispatch
-		audioSessionControl2 := (*wca.IAudioSessionControl2)(unsafe.Pointer(dispatch))
-		defer audioSessionControl2.Release()
-
-		var pid uint32
-		audioSessionControl2.GetProcessId(&pid)
-
-		if pid == s.PID {
-			var sav *wca.ISimpleAudioVolume
-
-			if dispatch2, err := audioSessionControl2.QueryInterface(wca.IID_ISimpleAudioVolume); err != nil {
-				return 0, err
-			} else {
-				sav = (*wca.ISimpleAudioVolume)(unsafe.Pointer(dispatch2))
-			}
-
-			var vol float32
-			if err := sav.GetMasterVolume(&vol); err != nil {
-				return 0, err
-			}
-			return int(vol * 100), nil
-		}
-	}
-	return 0, errors.New("PID has no audio session")
-
+	return int(level * 100), nil
 }
 
 func (s *SessionInfo) SetVolume(newVol int) error {
-
-	// Initialize COM
-	if oleCleanup, err := oleInit(); err != nil {
-		return err
-	} else {
-		defer oleCleanup()
-	}
-
-	// Create enumerator
-	var deviceEnum *wca.IMMDeviceEnumerator
-	if err := wca.CoCreateInstance(wca.CLSID_MMDeviceEnumerator, 0, ole.CLSCTX_ALL, wca.IID_IMMDeviceEnumerator, &deviceEnum); err != nil {
+	sessions, cleanup, err := sessionEnumerator()
+	if err != nil {
 		return err
 	}
-	defer deviceEnum.Release()
+	defer cleanup()
 
-	// Get default output device (Console role)
-	var mmd *wca.IMMDevice
-	if err := deviceEnum.GetDefaultAudioEndpoint(wca.ERender, wca.EConsole, &mmd); err != nil {
+	volume, err := simpleVolumeForPID(sessions, s.PID)
+	if err != nil {
 		return err
 	}
-	defer mmd.Release()
+	defer volume.Release()
 
-	var sm2 *wca.IAudioSessionManager2
-	if err := mmd.Activate(wca.IID_IAudioSessionManager2, wca.CLSCTX_ALL, nil, &sm2); err != nil {
-		return err
+	scalarVolume := float32(newVol) / 100
+	if scalarVolume < 0 {
+		scalarVolume = 0
+	} else if scalarVolume > 1 {
+		scalarVolume = 1
 	}
-	defer sm2.Release()
-
-	// get its IAudioSessionEnumerator
-	var sessionEnumerator *wca.IAudioSessionEnumerator
-	if err := sm2.GetSessionEnumerator(&sessionEnumerator); err != nil {
-		return err
-	}
-	defer sessionEnumerator.Release()
-
-	var sessionCount int
-	if err := sessionEnumerator.GetCount(&sessionCount); err != nil {
-		return err
-	}
-	// slog.Debug("GetSession", slog.Int("sessionCount", sessionCount))
-
-	for sessionIdx := 0; sessionIdx < sessionCount; sessionIdx++ {
-
-		var audioSessionControl *wca.IAudioSessionControl
-		if err := sessionEnumerator.GetSession(sessionIdx, &audioSessionControl); err != nil {
-			slog.Info("GetSession Bad Index")
-			return err
-		}
-
-		// query its IAudioSessionControl2
-		dispatch, err := audioSessionControl.QueryInterface(wca.IID_IAudioSessionControl2)
-		if err != nil {
-			slog.Error("Failed IAudioSessionControl2", "error", err, "sessionIdx", sessionIdx)
-			return err
-		}
-
-		// receive a useful object instead of our dispatch
-		audioSessionControl2 := (*wca.IAudioSessionControl2)(unsafe.Pointer(dispatch))
-		defer audioSessionControl2.Release()
-
-		var pid uint32
-		audioSessionControl2.GetProcessId(&pid)
-
-		if pid == s.PID {
-			var sav *wca.ISimpleAudioVolume
-
-			if dispatch2, err := audioSessionControl2.QueryInterface(wca.IID_ISimpleAudioVolume); err != nil {
-				return err
-			} else {
-				sav = (*wca.ISimpleAudioVolume)(unsafe.Pointer(dispatch2))
-			}
-
-			// Set volume by scalar value
-			scalarVolume := float32(newVol) / 100
-			if scalarVolume < 0 {
-				scalarVolume = 0
-			} else if scalarVolume > 1 {
-				scalarVolume = 1
-			}
-			return sav.SetMasterVolume(scalarVolume, nil)
-		}
-	}
-	return errors.New("PID has no audio session")
-
-} // SetVolume
+	return volume.SetMasterVolume(scalarVolume, nil)
+}
 
 // End.

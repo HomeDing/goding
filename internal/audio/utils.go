@@ -4,30 +4,27 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/go-ole/go-ole"
-
 	"errors"
 	"path/filepath"
+	"runtime"
 	"syscall"
 	"unsafe"
 
 	"github.com/StackExchange/wmi"
+	win32com "github.com/deploymenttheory/go-bindings-win32/bindings/win32/system/com"
 	"golang.org/x/sys/windows"
 )
 
-const S_FALSE = 1
-
-// initialize ole but also accept that there was a initialization up from (e.g. from midi)
-// Code=S_FALSE requires CoUninitialize to be called.
-func oleInit() (func(), error) {
-	err := ole.CoInitializeEx(0, ole.COINIT_MULTITHREADED)
-
-	if err != nil {
-		if hr, ok := err.(*ole.OleError); !ok || hr.Code() != S_FALSE {
-			return nil, fmt.Errorf("CoInitializeEx failed: 0x%x", hr)
-		}
+func comInit(apartment uint32) (func(), error) {
+	runtime.LockOSThread()
+	if _, err := win32com.CoInitializeEx(apartment); err != nil {
+		runtime.UnlockOSThread()
+		return nil, fmt.Errorf("CoInitializeEx failed: %w", err)
 	}
-	return func() { ole.CoUninitialize() }, nil
+	return func() {
+		win32com.CoUninitialize()
+		runtime.UnlockOSThread()
+	}, nil
 }
 
 func CleanEndpointName(name string) string {

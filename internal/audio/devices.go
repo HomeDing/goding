@@ -6,18 +6,25 @@
 // See <https://github.com/HomeDing/goding/blob/main/LICENSE> for details.
 
 // This package provides a wrapper around OS audio APIs so the
-// rest of the project does not have to deal with `ole` or `wca` specific directly.
-// Every call will initialize OLE (CoInitializeEx) and uninitialize OLE (CoUninitialize)
-// as goroutines are not bound to threads.
+// rest of the project does not have to deal with Windows COM interfaces directly.
 package audio
 
 import (
 	"errors"
 	"fmt"
 	"strings"
+	"syscall"
+	"unsafe"
 
-	"github.com/MixyLabs/go-wca/pkg/wca"
-	"github.com/go-ole/go-ole"
+	win32 "github.com/deploymenttheory/go-bindings-win32/bindings/runtime/win32"
+	"github.com/deploymenttheory/go-bindings-win32/bindings/win32/devices/functiondiscovery"
+	"github.com/deploymenttheory/go-bindings-win32/bindings/win32/foundation"
+	w32audio "github.com/deploymenttheory/go-bindings-win32/bindings/win32/media/audio"
+	audioendpoints "github.com/deploymenttheory/go-bindings-win32/bindings/win32/media/audio/endpoints"
+	win32com "github.com/deploymenttheory/go-bindings-win32/bindings/win32/system/com"
+	"github.com/deploymenttheory/go-bindings-win32/bindings/win32/system/com/structuredstorage"
+	"github.com/deploymenttheory/go-bindings-win32/bindings/win32/system/variant"
+	"github.com/deploymenttheory/go-bindings-win32/bindings/win32/ui/shell/propertiessystem"
 )
 
 // The DeviceInfo struct saves public information about a corresponding device, extending the EndpointInfo.
@@ -26,16 +33,15 @@ type DeviceInfo struct {
 	ID string //  the internal device ID
 }
 
-// get wca flow direction for devices from EndpointType
-func wcaFlow(ept EndpointType) uint32 {
+func dataFlow(ept EndpointType) w32audio.EDataFlow {
 	switch ept {
 	case Output:
-		return wca.ERender
+		return w32audio.ERender
 	case Input:
-		return wca.ECapture
+		return w32audio.ECapture
 	}
-	return 99
-} // wcaFlow()
+	return w32audio.EDataFlow(-1)
+}
 
 // validateEndpointType ensures the endpoint direction is a supported device type.
 func validateEndpointType(ept EndpointType) error {
@@ -45,33 +51,124 @@ func validateEndpointType(ept EndpointType) error {
 	return errors.New("No Device Endpoint Type")
 }
 
-// deviceEnumerator initializes COM and creates the Core Audio device enumerator.
-func deviceEnumerator() (*wca.IMMDeviceEnumerator, func(), error) {
-	if oleCleanup, err := oleInit(); err != nil {
-		return nil, nil, err
-	} else {
-		deviceEnum := new(wca.IMMDeviceEnumerator)
-		if err := wca.CoCreateInstance(
-			wca.CLSID_MMDeviceEnumerator,
-			0,
-			wca.CLSCTX_ALL,
-			wca.IID_IMMDeviceEnumerator,
-			&deviceEnum,
-		); err != nil {
-			oleCleanup()
-			return nil, nil, err
-		}
+var mmDeviceEnumeratorCLSID = win32.GUID{Data1: 0xBCDE0395, Data2: 0xE52F, Data3: 0x467C, Data4: [8]byte{0x8E, 0x3D, 0xC4, 0x57, 0x92, 0x91, 0x69, 0x2E}}
 
-		cleanup := func() {
-			deviceEnum.Release()
-			oleCleanup()
+func utf16PtrToString(ptr *uint16) string {
+	if ptr == nil {
+		return ""
+	}
+
+	length := 0
+	for {
+		ch := *(*uint16)(unsafe.Pointer(uintptr(unsafe.Pointer(ptr)) + uintptr(length*2)))
+		if ch == 0 {
+			break
 		}
-		return deviceEnum, cleanup, nil
+		length++
+	}
+	return syscall.UTF16ToString(unsafe.Slice(ptr, length))
+}
+
+func propVariantString(pv *structuredstorage.PROPVARIANT) (string, error) {
+	if pv == nil {
+		return "", errors.New("nil PROPVARIANT")
+	}
+
+	type rawPropVariant struct {
+		vt  uint16
+		_   [3]uint16
+		ptr unsafe.Pointer
+	}
+
+	raw := (*rawPropVariant)(unsafe.Pointer(pv))
+	vt := variant.VARENUM(raw.vt)
+
+	switch vt {
+	case variant.VT_LPWSTR:
+		if raw.ptr == nil {
+			return "", nil
+		}
+		return utf16PtrToString((*uint16)(raw.ptr)), nil
+	case variant.VT_BSTR:
+		if raw.ptr == nil {
+			return "", nil
+		}
+		return utf16PtrToString((*uint16)(raw.ptr)), nil
+	default:
+		return "", fmt.Errorf("unsupported property variant type %v", vt)
 	}
 }
 
+func deviceInfoFromIMMDevice(ept EndpointType, device *w32audio.IMMDevice, index int) (DeviceInfo, error) {
+	var id foundation.PWSTR
+	if err := device.GetId(&id); err != nil {
+		return DeviceInfo{}, fmt.Errorf("get device %d ID failed: %w", index, err)
+	}
+	if id == nil {
+		return DeviceInfo{}, fmt.Errorf("device %d has no ID", index)
+	}
+	deviceID := utf16PtrToString((*uint16)(unsafe.Pointer(id)))
+	win32com.CoTaskMemFree(unsafe.Pointer(id))
+
+	var store *propertiessystem.IPropertyStore
+	if err := device.OpenPropertyStore(win32com.STGM_READ, &store); err != nil {
+		return DeviceInfo{}, fmt.Errorf("open device %d property store failed: %w", index, err)
+	}
+	defer store.Release()
+
+	var pv structuredstorage.PROPVARIANT
+	if err := store.GetValue(&functiondiscovery.PKEY_Device_FriendlyName, &pv); err != nil {
+		return DeviceInfo{}, fmt.Errorf("get device %d friendly name failed: %w", index, err)
+	}
+	defer structuredstorage.PropVariantClear(&pv)
+
+	name, err := propVariantString(&pv)
+	if err != nil {
+		return DeviceInfo{}, fmt.Errorf("get device %d friendly name failed: %w", index, err)
+	}
+
+	return DeviceInfo{
+		EndpointInfo: EndpointInfo{
+			Flow: ept.String(),
+			Name: name,
+		},
+		ID: deviceID,
+	}, nil
+}
+
+// deviceEnumerator initializes COM and creates the Core Audio device enumerator.
+func deviceEnumerator() (*w32audio.IMMDeviceEnumerator, func(), error) {
+	comCleanup, err := comInit(uint32(win32com.COINIT_MULTITHREADED))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var unknown *win32.IUnknown
+	if err := win32com.CoCreateInstance(
+		&mmDeviceEnumeratorCLSID,
+		nil,
+		win32com.CLSCTX_ALL,
+		&w32audio.IID_IMMDeviceEnumerator,
+		&unknown,
+	); err != nil {
+		comCleanup()
+		return nil, nil, fmt.Errorf("create MMDevice enumerator failed: %w", err)
+	}
+	if unknown == nil {
+		comCleanup()
+		return nil, nil, errors.New("create MMDevice enumerator returned nil")
+	}
+
+	enumerator := win32.Cast[w32audio.IMMDeviceEnumerator](unknown)
+	cleanup := func() {
+		enumerator.Release()
+		comCleanup()
+	}
+	return enumerator, cleanup, nil
+}
+
 // defaultDevice returns the currently selected default audio device for the given flow.
-func defaultDevice(ept EndpointType) (*wca.IMMDevice, func(), error) {
+func defaultDevice(ept EndpointType) (*w32audio.IMMDevice, func(), error) {
 	if err := validateEndpointType(ept); err != nil {
 		return nil, nil, err
 	}
@@ -81,72 +178,46 @@ func defaultDevice(ept EndpointType) (*wca.IMMDevice, func(), error) {
 		return nil, nil, err
 	}
 
-	mmd := new(wca.IMMDevice)
-	if err := deviceEnum.GetDefaultAudioEndpoint(wcaFlow(ept), wca.EConsole, &mmd); err != nil {
+	var device *w32audio.IMMDevice
+	if err := deviceEnum.GetDefaultAudioEndpoint(dataFlow(ept), w32audio.EConsole, &device); err != nil {
 		cleanup()
 		return nil, nil, err
 	}
 
 	deviceCleanup := func() {
-		mmd.Release()
+		device.Release()
 		cleanup()
 	}
-	return mmd, deviceCleanup, nil
-}
-
-// deviceInfoFromIMMDevice converts a Core Audio device into the package DeviceInfo type.
-func deviceInfoFromIMMDevice(ept EndpointType, device *wca.IMMDevice, index int) (DeviceInfo, error) {
-	var id string
-	if err := device.GetId(&id); err != nil {
-		return DeviceInfo{}, fmt.Errorf("get device %d ID failed: %w", index, err)
-	}
-
-	var store *wca.IPropertyStore
-	if err := device.OpenPropertyStore(wca.STGM_READ, &store); err != nil {
-		return DeviceInfo{}, fmt.Errorf("open device %d property store failed: %w", index, err)
-	}
-	defer store.Release()
-
-	var pv wca.PROPVARIANT
-	if err := store.GetValue(&wca.PKEY_Device_FriendlyName, &pv); err != nil {
-		return DeviceInfo{}, fmt.Errorf("get device %d friendly name failed: %w", index, err)
-	}
-
-	return DeviceInfo{
-		EndpointInfo: EndpointInfo{
-			Flow: ept.String(),
-			Name: pv.String(),
-		},
-		ID: id,
-	}, nil
+	return device, deviceCleanup, nil
 }
 
 // endpointVolume resolves the volume control interface for the current device.
-func (d *DeviceInfo) endpointVolume() (*wca.IMMDevice, *wca.IAudioEndpointVolume, func(), error) {
+func (d *DeviceInfo) endpointVolume() (*w32audio.IMMDevice, *audioendpoints.IAudioEndpointVolume, func(), error) {
 	deviceEnum, cleanup, err := deviceEnumerator()
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	var mmd *wca.IMMDevice
-	if err := deviceEnum.GetDevice(d.ID, &mmd); err != nil {
+	var device *w32audio.IMMDevice
+	if err := deviceEnum.GetDevice(d.ID, &device); err != nil {
 		cleanup()
 		return nil, nil, nil, err
 	}
 
-	var aev *wca.IAudioEndpointVolume
-	if err := mmd.Activate(wca.IID_IAudioEndpointVolume, wca.CLSCTX_ALL, nil, &aev); err != nil {
-		mmd.Release()
+	var unknown *win32.IUnknown
+	if err := device.Activate(&audioendpoints.IID_IAudioEndpointVolume, win32com.CLSCTX_ALL, nil, &unknown); err != nil {
+		device.Release()
 		cleanup()
 		return nil, nil, nil, err
 	}
+	aev := win32.Cast[audioendpoints.IAudioEndpointVolume](unknown)
 
 	deviceCleanup := func() {
 		aev.Release()
-		mmd.Release()
+		device.Release()
 		cleanup()
 	}
-	return mmd, aev, deviceCleanup, nil
+	return device, aev, deviceCleanup, nil
 }
 
 // GetDefaultDevice retrieves the active audio endpoint devices for the specified
@@ -219,35 +290,36 @@ func ListDevices(ept EndpointType) ([]DeviceInfo, error) {
 		return nil, err
 	}
 
-	deviceEnum, cleanup, err := deviceEnumerator()
+	enumerator, cleanup, err := deviceEnumerator()
 	if err != nil {
 		return nil, err
 	}
 	defer cleanup()
 
-	var coll *wca.IMMDeviceCollection
-	if err := deviceEnum.EnumAudioEndpoints(wcaFlow(ept), wca.DEVICE_STATE_ACTIVE, &coll); err != nil {
+	var collection *w32audio.IMMDeviceCollection
+	if err := enumerator.EnumAudioEndpoints(dataFlow(ept), w32audio.DEVICE_STATE_ACTIVE, &collection); err != nil {
 		return nil, fmt.Errorf("EnumAudioEndpoints failed: %w", err)
 	}
-	defer coll.Release()
+	defer collection.Release()
 
 	var count uint32
-	if err := coll.GetCount(&count); err != nil {
+	if err := collection.GetCount(&count); err != nil {
 		return nil, fmt.Errorf("GetCount failed: %w", err)
 	}
 
 	result := make([]DeviceInfo, 0, count)
-	for i := 0; i < int(count); i++ {
-		var dev *wca.IMMDevice
-		if err := coll.Item(uint32(i), &dev); err != nil {
+	for i := uint32(0); i < count; i++ {
+		var device *w32audio.IMMDevice
+		if err := collection.Item(i, &device); err != nil {
 			return nil, fmt.Errorf("get device %d failed: %w", i, err)
 		}
-		deviceInfo, err := deviceInfoFromIMMDevice(ept, dev, i)
+		deviceInfo, err := deviceInfoFromIMMDevice(ept, device, int(i))
 		if err != nil {
+			device.Release()
 			return nil, err
 		}
 		result = append(result, deviceInfo)
-		dev.Release()
+		device.Release()
 	}
 
 	return result, nil
@@ -279,32 +351,7 @@ func FindDevice(ept EndpointType, match string) (*DeviceInfo, error) {
 
 // Using IPolicyConfig to change device, partly undocumented !
 func (d *DeviceInfo) SetDefault() error {
-	if oleCleanup, err := oleInit(); err != nil {
-		return err
-	} else {
-		defer oleCleanup()
-	}
-
-	var pc *wca.IPolicyConfigVista
-	if err := wca.CoCreateInstance(
-		wca.GUID_CPolicyConfigVistaClient,
-		0,
-		ole.CLSCTX_ALL,
-		wca.GUID_IPolicyConfigVista,
-		&pc,
-	); err != nil {
-		return errors.New("CoCreateInstance failed")
-	}
-	defer pc.Release()
-
-	roles := []wca.ERole{wca.EConsole}
-	for _, r := range roles {
-		if err := pc.SetDefaultEndpoint(d.ID, r); err != nil {
-			return fmt.Errorf("SetDefaultEndpoint failed: %w", err)
-		}
-	}
-
-	return nil
+	return SetDefaultAudioDevice(d.ID)
 }
 
 // get the volume from a device or return 0 if not found
@@ -336,33 +383,18 @@ func (d *DeviceInfo) SetVolume(vol int) error {
 		scalarVolume = 1
 	}
 
-	aev.SetMasterVolumeLevelScalar(scalarVolume, nil)
-	return nil
+	return aev.SetMasterVolumeLevelScalar(scalarVolume, nil)
 } // SetVolume()
 
 // RegisterVolumeChangeNotify requests notifications for master volume changes.
-// The underlying go-wca package currently exposes the COM notification call, but it
-// returns E_NOTIMPL on Windows, so this acts as a direct wrapper and the example
-// falls back to polling if the callback is unsupported.
+// This generated binding set does not currently expose the callback implementation.
 func (d *DeviceInfo) RegisterVolumeChangeNotify() error {
-	_, aev, cleanup, err := d.endpointVolume()
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	return aev.RegisterControlChangeNotify()
+	return errors.New("volume change notifications are not implemented")
 } // RegisterVolumeChangeNotify()
 
 // UnregisterVolumeChangeNotify removes the notification subscription.
 func (d *DeviceInfo) UnregisterVolumeChangeNotify() error {
-	_, aev, cleanup, err := d.endpointVolume()
-	if err != nil {
-		return err
-	}
-	defer cleanup()
-
-	return aev.UnregisterControlChangeNotify()
+	return errors.New("volume change notifications are not implemented")
 } // UnregisterVolumeChangeNotify()
 
 // GetMute queries the mute state of the audio endpoint device represented by
@@ -384,12 +416,12 @@ func (d *DeviceInfo) GetMute() (bool, error) {
 	}
 	defer cleanup()
 
-	var muted bool
+	var muted foundation.BOOL
 	if err := aev.GetMute(&muted); err != nil {
 		return false, err
 	}
 
-	return muted, nil
+	return muted != 0, nil
 } // GetMute
 
 // SetMute changes the mute state of the audio endpoint device represented by
@@ -411,8 +443,7 @@ func (d *DeviceInfo) SetMute(muted bool) error {
 	}
 	defer cleanup()
 
-	aev.SetMute(muted, nil)
-	return nil
+	return aev.SetMute(muted, nil)
 } // SetMute()
 
 // End.

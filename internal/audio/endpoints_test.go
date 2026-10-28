@@ -12,8 +12,6 @@ import (
 	"testing"
 
 	"github.com/HomeDing/goding/internal/common"
-
-	"github.com/MixyLabs/go-wca/pkg/wca"
 )
 
 func TestEndpointIdentifiers(t *testing.T) {
@@ -60,7 +58,7 @@ func TestListEndpoints(t *testing.T) {
 	var endpoints []common.Endpoint
 
 	// ===== output devices =====
-	devices, _ := ListDevices(wca.ERender)
+	devices, _ := ListDevices(Output)
 	for i := range devices {
 		endpoints = append(endpoints, &devices[i])
 	}

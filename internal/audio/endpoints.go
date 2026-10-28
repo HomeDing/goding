@@ -9,6 +9,14 @@
 // rest of the project does not have to deal with `ole` or `wca` specific directly.
 // Every call will initialize OLE (CoInitializeEx) and uninitialize OLE (CoUninitialize)
 // as goroutine are not bound to threads.
+//
+// The EndpointInfo struct saves common information about a corresponding device or
+// session (application).
+// Devices are the physical or virtual audio endpoints identified by the Device IDs, while
+// Sessions are the audio streams of applications identified by PID.
+// Enumerating devices and sessions is done by the functions in devices.go and sessions.go.
+// They return a list of EndpointInfo structs with the common information
+// and the specific struct for the type of endpoint without blocking any COM interfaces.
 package audio
 
 import (

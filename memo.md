@@ -98,10 +98,10 @@ URL to pass an action into a device manually e.g. by using
 
 * go install github.com/go-delve/delve/cmd/dlv@latest
 
-## WCA wrappers
+## Windows audio bindings
 
-* [roamer](https://github.com/Oppodelldog/roamer/blob/main/internal/audioctl/device.go)  
-  replace github.com/moutend/go-wca v0.2.0 => github.com/Oppodelldog/go-wca v0.2.1-0.20211129184456-42e90fa2b475
+* Audio device and session operations are isolated in `internal/audio` and use
+  `github.com/deploymenttheory/go-bindings-win32` directly.
 
 ## See also
 

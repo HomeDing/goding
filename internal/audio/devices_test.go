@@ -9,16 +9,14 @@ package audio
 
 import (
 	"testing"
-
-	"github.com/MixyLabs/go-wca/pkg/wca"
 )
 
 func TestPolicyConfigGUIDs(t *testing.T) {
-	if got, want := wca.GUID_CPolicyConfigVistaClient.Data1, uint32(0x294935ce); got != want {
+	if got, want := clsidPolicyConfigClient.Data1, uint32(0x870af99c); got != want {
 		t.Fatalf("unexpected PolicyConfig CLSID Data1: got 0x%x, want 0x%x", got, want)
 	}
 
-	if got, want := wca.GUID_IPolicyConfigVista.Data1, uint32(0x568b9108); got != want {
+	if got, want := iidPolicyConfig.Data1, uint32(0xf8679f50); got != want {
 		t.Fatalf("unexpected PolicyConfig IID Data1: got 0x%x, want 0x%x", got, want)
 	}
 }
@@ -28,7 +26,7 @@ func TestListDevices(t *testing.T) {
 	var err error
 
 	// ===== output devices =====
-	devices, err = ListDevices(wca.ERender)
+	devices, err = ListDevices(Output)
 	if err != nil {
 		t.Skipf("Windows audio device enumeration unavailable: %v", err)
 	}
@@ -46,7 +44,7 @@ func TestListDevices(t *testing.T) {
 	}
 
 	// ===== input devices =====
-	devices, err = ListDevices(wca.ECapture)
+	devices, err = ListDevices(Input)
 	if err != nil {
 		t.Skipf("Windows audio device enumeration unavailable: %v", err)
 	}
@@ -73,7 +71,7 @@ func TestSetDefaultDevice(t *testing.T) {
 		t.Skipf("GetDefaultDevice failed: %v", err)
 	}
 
-	devices, err := ListDevices(wca.ERender)
+	devices, err := ListDevices(Output)
 	if err != nil {
 		t.Skipf("Windows audio device enumeration unavailable: %v", err)
 	}
