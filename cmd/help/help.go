@@ -39,22 +39,25 @@ func init() {
 } // init()
 
 func Help() {
-	slog.Debug("Help.Help()")
+	if global.HasTerminal {
+		slog.Debug("Help.Help()")
 
-	fmt.Println()
-	fmt.Println(
-		`Usage:
+		fmt.Println()
+		fmt.Println(
+			`Usage:
 
   goding <command> [parameters]
 
 commands are:
   serve          start a web server with the web interface and API for controlling devices.
   midi           start the midi listener to create actions.
+  list           list all available MIDI input devices.
   help           print this help information.
   help <command> print help for the specified command.
 	`)
 
-	helpFlags.Usage()
+		helpFlags.Usage()
+	}
 } // Help()
 
 // ParseArguments parses the command-line arguments and sets the global variables accordingly.
@@ -76,23 +79,25 @@ func ParseArguments(args []string) (bool, error) {
 } // ParseArguments()
 
 func Run(wg *sync.WaitGroup) error {
-	slog.Debug("help.Run()", slog.String("command", helpCommand))
+	if global.HasTerminal {
+		slog.Debug("help.Run()", slog.String("command", helpCommand))
 
-	fmt.Println()
-	fmt.Println(
-		`goDing is a Windows service application to use a Windows machine
+		fmt.Println()
+		fmt.Println(
+			`goDing is a Windows service application to use a Windows machine
 to execute HomeDing compatible actions triggered by call to a web server and by midi messages.
   `)
 
-	switch helpCommand {
-	case "serve":
-		serve.Help()
+		switch helpCommand {
+		case "serve":
+			serve.Help()
 
-	case "midi":
-		midi.Help()
+		case "midi":
+			midi.Help()
 
-	default:
-		Help()
+		default:
+			Help()
+		}
 	}
 	return nil
 } // Run()

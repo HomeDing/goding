@@ -168,7 +168,9 @@ func Stop() {
 func List() error {
 	slog.Debug("midi.List()")
 
-	fmt.Println("in ports:")
+	fmt.Println()
+	fmt.Println("MIDI inbound ports:")
+
 	devices := midiDevices.ListInputDevices()
 	if len(devices) == 0 {
 		fmt.Println("(none)")
