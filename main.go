@@ -2,6 +2,7 @@
 package main
 
 import (
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -23,6 +24,7 @@ import (
 	"github.com/HomeDing/goding/internal/elements/registry"
 	"github.com/HomeDing/goding/internal/global"
 	"github.com/HomeDing/goding/internal/osd"
+	"github.com/HomeDing/goding/internal/win"
 )
 
 // TODO: move global variables into a config struct and use a config file for configuration
@@ -160,12 +162,17 @@ func initTray() *systray.SystemTray {
 // Main entry point for the GoDing application.
 // It initializes the application, parses command-line arguments, and runs the specified commands.
 func main() {
+	global.HasTerminal = win.HasConsoleWindow()
+
 	// Set the default log level to warning to reduce verbosity in normal operation.
 	slog.SetLogLoggerLevel(slog.LevelInfo)
+	if !global.HasTerminal {
+		slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+	}
 
 	// Enable the following lines to get debug output from the start
-	slog.SetLogLoggerLevel(slog.LevelDebug)
-	global.VerboseFlag = true
+	// slog.SetLogLoggerLevel(slog.LevelDebug)
+	// global.VerboseFlag = true
 
 	args := os.Args
 
@@ -184,18 +191,20 @@ func main() {
 	}
 
 	// commands that do not need to start the tray and the main window event loop can be handled here.
-	if args[1] == "help" {
+	switch args[1] {
+	case "help":
 		helpMode = true
 		help.ParseArguments(args[2:])
 		help.Run(&activeCommands)
 
-	} else if args[1] == "list" {
+	case "list":
 		midi.List()
 
-	} else {
+	default:
 		parseAndRun(args[1:])
 
 		if global.VerboseFlag {
+			slog.Info("using verbose logging...")
 			slog.SetLogLoggerLevel(slog.LevelDebug)
 		}
 

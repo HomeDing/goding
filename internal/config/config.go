@@ -141,7 +141,7 @@ func (c Config) CreateElements() {
 		for elementID, elementConfig := range elementType.Elements {
 			element, err := elements.NewElement(typeName, elementID)
 			if err != nil {
-				slog.Warn("unsupported config element type", "type", typeName, "id", elementID)
+				slog.Warn("unknown element", "type", typeName, "id", elementID)
 				continue
 			}
 

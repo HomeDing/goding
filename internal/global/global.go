@@ -19,6 +19,9 @@ var Command string = ""
 // global flag for verbose logging, can be set by command-line arguments
 var VerboseFlag bool = false
 
+// global flag indicating whether the process has a console window
+var HasTerminal bool = false
+
 // global flag for development mode. This is set when starting from the command line with any command argument.
 var DevFlag bool = false
 

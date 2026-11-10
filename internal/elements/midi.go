@@ -46,15 +46,15 @@ func (e *Midi) Set(key, value string) bool {
 
 	// call the base Set method to handle known keys
 	changed := e.Base.Set(key, value)
-	if changed {
-		switch key {
-		case "message":
-			slog.Warn("message specification")
+	// if changed {
+	// 	switch key {
+	// 	case "message":
+	// 		slog.Warn("message specification")
 
-		case "onmessage":
-			slog.Warn("onmessage specification")
-		}
-	}
+	// 	case "onmessage":
+	// 		slog.Warn("onmessage specification")
+	// 	}
+	// }
 	return changed
 } // Set()
 

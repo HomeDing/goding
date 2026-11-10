@@ -6,7 +6,7 @@ $(info )
 
 .DEFAULT_GOAL := build
 BINARY := goDing.exe
-PKG := main.go
+PKG := . # main.go
 
 .PHONY: all build test run clean help
 
@@ -15,6 +15,10 @@ all: build
 build:
 	$(info building $(BINARY)...)
 	go build -v -o $(BINARY) $(PKG)
+
+buildTray:
+	$(info building $(BINARY)...)
+	go build -ldflags="-H=windowsgui" -v -o $(BINARY) $(PKG)
 
 test:
 	$(info testing...)
@@ -31,9 +35,10 @@ help:
 	$(info Usage: make [target])
 	$(info )
 	$(info Targets:)
-	$(info   build  - build the binary (default))
-	$(info   test   - run go tests)
-	$(info   run    - run with `go run`)
-	$(info   clean  - remove built binaries)
-	$(info   help   - show this help)
+	$(info   build     - build the binary with terminal (default))
+	$(info   buildTray - build the binary Tray only)
+	$(info   test      - run go tests)
+	$(info   run       - run with `go run`)
+	$(info   clean     - remove built binaries)
+	$(info   help      - show this help)
 	$(info )
