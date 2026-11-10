@@ -17,6 +17,7 @@ import (
 	"log/slog"
 	"sync"
 
+	"github.com/HomeDing/goding/cmd/list"
 	"github.com/HomeDing/goding/cmd/midi"
 	"github.com/HomeDing/goding/cmd/serve"
 	"github.com/HomeDing/goding/internal/global"
@@ -89,6 +90,9 @@ to execute HomeDing compatible actions triggered by call to a web server and by 
   `)
 
 		switch helpCommand {
+		case "list":
+			list.Help()
+
 		case "serve":
 			serve.Help()
 

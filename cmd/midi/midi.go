@@ -165,25 +165,6 @@ func Stop() {
 	}
 }
 
-func List() error {
-	slog.Debug("midi.List()")
-
-	fmt.Println()
-	fmt.Println("MIDI inbound ports:")
-
-	devices := midiDevices.ListInputDevices()
-	if len(devices) == 0 {
-		fmt.Println("(none)")
-		return nil
-	}
-
-	for _, device := range devices {
-		fmt.Printf("%d: '%s'\n", device.ID, device.Name)
-	}
-
-	return nil
-}
-
 // GetInstance returns the singleton MIDIListener instance
 func GetInstance() *MIDIListener {
 	once.Do(func() {

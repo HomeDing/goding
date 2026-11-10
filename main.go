@@ -17,6 +17,7 @@ import (
 
 	"github.com/HomeDing/goding/assets"
 	"github.com/HomeDing/goding/cmd/help"
+	"github.com/HomeDing/goding/cmd/list"
 	"github.com/HomeDing/goding/cmd/midi"
 	"github.com/HomeDing/goding/cmd/serve"
 	"github.com/HomeDing/goding/internal/config"
@@ -59,8 +60,8 @@ func runCommand(command string, args []string) {
 		serve.Run(&activeCommands)
 
 	case "list":
-		midi.ParseArguments(args)
-		midi.List()
+		list.ParseArguments(args)
+		list.Run(&activeCommands)
 
 	case "midi":
 		// switch on dev mode to enable supporting functionality for development and debugging.
@@ -197,7 +198,8 @@ func main() {
 		help.Run(&activeCommands)
 
 	case "list":
-		midi.List()
+		list.ParseArguments(args[2:])
+		list.Run(&activeCommands)
 
 	default:
 		parseAndRun(args[1:])
