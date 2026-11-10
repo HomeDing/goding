@@ -2,7 +2,6 @@
 package main
 
 import (
-	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -167,7 +166,7 @@ func main() {
 	// Set the default log level to warning to reduce verbosity in normal operation.
 	slog.SetLogLoggerLevel(slog.LevelInfo)
 	if !global.HasTerminal {
-		slog.SetDefault(slog.New(slog.NewTextHandler(io.Discard, nil)))
+		slog.SetDefault(slog.New(slog.DiscardHandler))
 	}
 
 	// Enable the following lines to get debug output from the start

@@ -199,7 +199,7 @@ func Run(wg *sync.WaitGroup) error {
 	}
 
 	BaseURL = "http://localhost:" + fmt.Sprint(global.Port) + "/"
-	fmt.Println("Starting goding web server on " + BaseURL)
+	slog.Info("Starting goding web server on " + BaseURL)
 
 	// Create a server instance
 	srv = &http.Server{
