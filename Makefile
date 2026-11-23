@@ -27,6 +27,9 @@ test:
 run:
 	go run $(PKG)
 
+runVerbose:
+	go run $(PKG) midi --device LPD --verbose serve
+	
 clean:
 	go clean 
 	del $(BINARY)
