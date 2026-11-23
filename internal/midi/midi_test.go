@@ -9,6 +9,38 @@ package midi
 
 import "testing"
 
+func TestMatchingInputDevices(t *testing.T) {
+	devices := []InputDevice{
+		{ID: 0, Name: "LPD8 mk2"},
+		{ID: 1, Name: "Virtual MIDI"},
+		{ID: 2, Name: "LPD8"},
+	}
+
+	tests := []struct {
+		name       string
+		deviceName string
+		wantIDs    []uint32
+	}{
+		{name: "matches name case insensitively", deviceName: "LpD8", wantIDs: []uint32{0, 2}},
+		{name: "wildcard matches every device", deviceName: "*", wantIDs: []uint32{0, 1, 2}},
+		{name: "unavailable device has no matches", deviceName: "missing", wantIDs: []uint32{}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := matchingInputDevices(devices, test.deviceName)
+			if len(got) != len(test.wantIDs) {
+				t.Fatalf("matchingInputDevices() returned %d devices, want %d", len(got), len(test.wantIDs))
+			}
+			for index, device := range got {
+				if device.ID != test.wantIDs[index] {
+					t.Errorf("matchingInputDevices()[%d].ID = %d, want %d", index, device.ID, test.wantIDs[index])
+				}
+			}
+		})
+	}
+}
+
 func TestDecodeDeviceName(t *testing.T) {
 	tests := []struct {
 		name string

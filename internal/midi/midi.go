@@ -18,6 +18,7 @@ import (
 	"syscall"
 	"unicode/utf16"
 
+	"github.com/HomeDing/goding/internal/devicechange"
 	winma "github.com/deploymenttheory/go-bindings-win32/bindings/win32/media/audio"
 )
 
@@ -72,6 +73,12 @@ type inputListener struct {
 var inputListeners sync.Map
 var nextInputListenerID atomic.Uintptr
 
+type openedInputDevice struct {
+	device     InputDevice
+	handle     winma.HMIDIIN
+	listenerID uintptr
+}
+
 // midiInCallback is the callback function for MIDI input events.
 // It is called by the Windows API when a MIDI message is received.
 var midiInCallback = syscall.NewCallback(func(_ uintptr, message uint32, instance uintptr, data uintptr, _ uintptr) uintptr {
@@ -112,53 +119,115 @@ func ListInputDevices() []InputDevice {
 	return devices
 }
 
-// ListenInputDevice opens the named MIDI input device and handles supported
-// messages until a value is received from stop. It blocks until stopped.
+// ListenInputDevice listens for supported messages from matching MIDI input
+// devices until a value is received from stop. It blocks until stopped.
+// A device name of "*" matches every input device. Devices are rescanned so
+// devices connected after this function starts are opened automatically.
 func ListenInputDevice(deviceName string, stop <-chan bool, handler func(Message)) error {
 	if handler == nil {
 		return fmt.Errorf("MIDI message handler is nil")
 	}
 
-	deviceName = strings.ToLower(deviceName)
-	var device *InputDevice
-	for _, candidate := range ListInputDevices() {
-		if strings.Contains(strings.ToLower(candidate.Name), deviceName) {
-			device = &candidate
-			break
-		}
-	}
-	if device == nil {
-		return fmt.Errorf("MIDI input device %q not found", deviceName)
-	}
+	deviceChanges, unsubscribe := devicechange.Subscribe()
+	defer unsubscribe()
 
-	listener := &inputListener{handler: handler}
-	listenerID := nextInputListenerID.Add(1)
-	inputListeners.Store(listenerID, listener)
-	var handle winma.HMIDIIN
-	result := winma.MidiInOpen(&handle, device.ID, midiInCallback, listenerID, winma.CALLBACK_FUNCTION)
-	if result != 0 {
-		inputListeners.Delete(listenerID)
-		return fmt.Errorf("midiInOpen failed with MMRESULT %d", result)
-	}
+	opened := make(map[uint32]*openedInputDevice)
 	defer func() {
-		if result := winma.MidiInStop(handle); result != 0 {
-			slog.Warn("midiInStop failed", "result", result)
+		for _, device := range opened {
+			closeInputDevice(device)
 		}
-		if result := winma.MidiInReset(handle); result != 0 {
-			slog.Warn("midiInReset failed", "result", result)
-		}
-		if result := winma.MidiInClose(handle); result != 0 {
-			slog.Error("midiInClose failed", "result", result)
-		}
-		inputListeners.Delete(listenerID)
 	}()
 
-	if result := winma.MidiInStart(handle); result != 0 {
-		return fmt.Errorf("midiInStart failed with MMRESULT %d", result)
-	}
+	waiting := false
+	for {
+		devices := matchingInputDevices(ListInputDevices(), deviceName)
+		wanted := make(map[uint32]InputDevice, len(devices))
+		for _, device := range devices {
+			wanted[device.ID] = device
+		}
 
-	<-stop
-	return nil
+		for id, device := range opened {
+			if candidate, ok := wanted[id]; ok && candidate.Name == device.device.Name {
+				continue
+			}
+			slog.Info("midi input device disconnected", "device", device.device.Name, "id", device.device.ID)
+			closeInputDevice(device)
+			delete(opened, id)
+		}
+
+		for _, device := range devices {
+			if _, ok := opened[device.ID]; ok {
+				continue
+			}
+			openedDevice, err := openInputDevice(device, handler)
+			if err != nil {
+				slog.Warn("midi input device open failed", "device", device.Name, "id", device.ID, "error", err)
+				continue
+			}
+			opened[device.ID] = openedDevice
+			slog.Info("midi input device opened", "device", device.Name, "id", device.ID)
+		}
+
+		if len(opened) == 0 && !waiting {
+			slog.Warn("waiting for MIDI input device", "device", deviceName)
+			waiting = true
+		} else if len(opened) > 0 {
+			waiting = false
+		}
+
+		select {
+		case <-stop:
+			return nil
+		case <-deviceChanges:
+		}
+	}
+}
+
+func matchingInputDevices(devices []InputDevice, deviceName string) []InputDevice {
+	deviceName = strings.ToLower(deviceName)
+	matches := make([]InputDevice, 0, len(devices))
+	for _, device := range devices {
+		if deviceName == "*" || strings.Contains(strings.ToLower(device.Name), deviceName) {
+			matches = append(matches, device)
+		}
+	}
+	return matches
+}
+
+func openInputDevice(device InputDevice, handler func(Message)) (*openedInputDevice, error) {
+	listenerID := nextInputListenerID.Add(1)
+	inputListeners.Store(listenerID, &inputListener{handler: handler})
+	opened := &openedInputDevice{device: device, listenerID: listenerID}
+	openResult := winma.MidiInOpen(&opened.handle, device.ID, midiInCallback, listenerID, winma.CALLBACK_FUNCTION)
+	if openResult != 0 {
+		inputListeners.Delete(listenerID)
+		return nil, fmt.Errorf("midiInOpen failed with MMRESULT %d", openResult)
+	}
+	if opened.handle == 0 {
+		inputListeners.Delete(listenerID)
+		return nil, fmt.Errorf("midiInOpen succeeded without returning a handle")
+	}
+	if result := winma.MidiInStart(opened.handle); result != 0 {
+		if closeResult := winma.MidiInClose(opened.handle); closeResult != 0 {
+			slog.Error("midiInClose failed after start failure", "device", device.Name, "result", closeResult)
+		}
+		inputListeners.Delete(listenerID)
+		return nil, fmt.Errorf("midiInStart failed with MMRESULT %d (handle %#x)", result, uintptr(opened.handle))
+	}
+	return opened, nil
+}
+
+func closeInputDevice(device *openedInputDevice) {
+	if result := winma.MidiInStop(device.handle); result != 0 {
+		slog.Warn("midiInStop failed", "device", device.device.Name, "result", result)
+	}
+	if result := winma.MidiInReset(device.handle); result != 0 {
+		slog.Warn("midiInReset failed", "device", device.device.Name, "result", result)
+	}
+	if result := winma.MidiInClose(device.handle); result != 0 {
+		slog.Error("midiInClose failed", "device", device.device.Name, "result", result)
+	}
+	inputListeners.Delete(device.listenerID)
 }
 
 // decodeShortMessage decodes a short MIDI message from the given data pointer.

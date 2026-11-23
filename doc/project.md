@@ -1,26 +1,62 @@
 # Project structure
 
-Folder structure
+The repository is organized around command packages, reusable internal packages,
+and the web frontend:
 
-``` txt
+```text
 goding/
-│
 ├── .github/                      -- GitHub configuration and Copilot instructions
 │   └── copilot-instructions.md   -- project-specific Copilot guidance
-├── cmd/                          -- command implementations
-│   ├── help/                     -- help command and related output
-│   ├── midi/                     -- MIDI listener and event handling
-│   └── serve/                    -- HTTP/web server implementation
-├── doc/                          -- project documentation and design notes
-├── internal/                     -- internal packages and shared logic
-│   └── actionqueue/              -- FIFO action queue for async work
-├── public/                       -- static frontend assets (many files)
-├── main.go                       -- application entry point and lifecycle setup
-└── go.mod                        -- Go module configuration
-
-└── notify.go                     -- sample Windows audio-session notification watcher
-└── notify2.go                    -- companion async notification sample
+├── api/                       HTTP API handlers
+├── assets/                    Embedded application icon assets
+├── cmd/                       Command-line entry points
+│   ├── help/                  Help command
+│   ├── list/                  MIDI input-device listing command
+│   ├── midi/                  MIDI listener command and action dispatch
+│   └── serve/                 HTTP server and static-file serving
+├── doc/                       Project, package, and feature documentation
+├── internal/                  Reusable internal packages
+│   ├── actionqueue/           Asynchronous action queue
+│   ├── audio/                 Windows audio devices, endpoints, and sessions
+│   ├── common/                Interfaces shared by application elements
+│   ├── config/                Configuration loading and element definitions
+│   ├── devicechange/          Shared device-change notification subscriptions
+│   ├── elements/              Volume and MIDI element implementations
+│   │   └── registry/          Runtime element registry
+│   ├── global/                Shared application configuration and state
+│   ├── http/verbose/          Structured HTTP request-logging middleware
+│   ├── midi/                  WinMM MIDI discovery and input callbacks
+│   ├── osd/                   Windows on-screen display and message handling
+│   └── win/                   Windows-specific utilities
+├── web/                       Static frontend pages, styles, and scripts
+├── main.go                    Application entry point and lifecycle
+├── Makefile                   Build, test, and run targets
+├── go.mod, go.sum             Go module and dependency metadata
+└── README.md, memo.md          Project overview and design notes
 ```
+
+## Go package responsibilities
+
+| Package                      | Responsibility                                                          |
+| ---------------------------- | ----------------------------------------------------------------------- |
+| `api`                        | Implements HTTP API handlers, including the application state endpoint. |
+| `assets`                     | Embeds application icon data for use by the tray.                       |
+| `cmd/help`                   | Prints command-line help.                                               |
+| `cmd/list`                   | Lists available MIDI input devices.                                     |
+| `cmd/midi`                   | Starts the MIDI listener and dispatches matching actions.               |
+| `cmd/serve`                  | Runs the HTTP server and serves API and web content.                    |
+| `internal/actionqueue`       | Queues and dispatches actions asynchronously.                           |
+| `internal/audio`             | Wraps Windows audio-device, endpoint, and session operations.           |
+| `internal/common`            | Defines shared element and endpoint interfaces.                         |
+| `internal/config`            | Loads configuration and describes configured elements.                  |
+| `internal/devicechange`      | Distributes Windows device-change signals to subscribers.               |
+| `internal/elements`          | Implements application elements, including volume and MIDI controls.    |
+| `internal/elements/registry` | Registers and retrieves runtime element instances.                      |
+| `internal/global`            | Holds shared application flags, settings, and runtime state.            |
+| `internal/http/verbose`      | Provides structured HTTP request-logging middleware.                    |
+| `internal/midi`              | Enumerates WinMM MIDI inputs and manages per-device callbacks.          |
+| `internal/osd`               | Implements the Windows OSD window and forwards device-change messages.  |
+| `internal/win`               | Provides small Windows-specific helpers.                                |
 
 
 ## Implementation using Goroutines

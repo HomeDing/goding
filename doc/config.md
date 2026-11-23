@@ -11,6 +11,8 @@ The setup for this example is a midi controller (AKAI LPD8 or similar) to send M
 The configuration example acts on defined MIDI messages to control the volume of the
 system sounds, an application output volume and the volume of the current output device.
 
+Example:
+
 ``` JSON
 {
   "Element": {
@@ -25,6 +27,12 @@ system sounds, an application output volume and the volume of the current output
       "max": "100",
       "endpoint": "out:con",
       "value": "50"
+    },
+    "traydio": {
+      "min": "0",
+      "max": "100",
+      "endpoint": "app:trdo",
+      "value": "20"
     },
     "bee": {
       "min": "0",

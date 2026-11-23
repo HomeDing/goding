@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"unsafe"
 
+	"github.com/HomeDing/goding/internal/devicechange"
 	"github.com/deploymenttheory/go-bindings-win32/bindings/runtime/win32"
 	"github.com/deploymenttheory/go-bindings-win32/bindings/win32/foundation"
 	"github.com/deploymenttheory/go-bindings-win32/bindings/win32/graphics/dwm"
@@ -308,6 +309,12 @@ func (this *OSD) windowProc(hwnd foundation.HWND, message uint32, wParam foundat
 			wm.ShowWindow(hwnd, wm.SW_HIDE)
 		}
 		return 0
+
+	case wm.WM_DEVICECHANGE:
+		if uint32(wParam) == wm.DBT_DEVNODES_CHANGED {
+			devicechange.Notify()
+		}
+		return uintptr(wm.DefWindowProc(hwnd, message, wParam, lParam))
 
 	case wm.WM_DESTROY:
 		wm.CloseWindow(this.hwnd)

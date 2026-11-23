@@ -6,9 +6,12 @@
 `midiInGetDevCaps`. It prints each device's numeric ID and name. If reading a device's
 capabilities fails, that device is skipped and a warning is logged.
 
-The listener currently opens the input device named `LPD8 mk2`. The name match is
-case-insensitive. If the device is not found or cannot be opened, the listener logs an
-error and exits.
+The listener opens input devices whose names contain the configured `--device` value.
+The match is case-insensitive; the default is `LPD`. The listener scans at startup and
+on Windows device-change notifications, so it opens a matching device that appears
+later without periodic polling. Use `--device "*"` to listen to every available input
+device, including devices connected after startup. WinMM callbacks are registered
+separately for each opened device; there is no single system-wide input callback.
 
 ## Messages and actions
 
@@ -38,7 +41,7 @@ do not enqueue anything.
 
 ## Implementation
 
-`internal/midi/winmm.go` encapsulates the Windows-specific device discovery, WinMM
+`internal/midi/midi.go` encapsulates the Windows-specific device discovery, WinMM
 handle lifecycle, callback, and short-message decoding. It uses
 `github.com/deploymenttheory/go-bindings-win32/bindings/win32/media/audio` for the
 Windows MIDI interfaces. The `cmd/midi` package handles command lifecycle and action

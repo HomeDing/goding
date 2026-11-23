@@ -79,7 +79,7 @@ func init() {
 	// define the flags for the midi command
 	midiFlags = flag.NewFlagSet("midi", flag.ExitOnError)
 	midiFlags.BoolVar(&global.VerboseFlag, "verbose", global.VerboseFlag, "enable verbose logging")
-	midiFlags.StringVar(&global.MidiDeviceName, "device", global.MidiDeviceName, "device name to listen for midi messages")
+	midiFlags.StringVar(&global.MidiDeviceName, "device", global.MidiDeviceName, "device name to listen for MIDI messages, or * for all devices")
 
 } // init()
 

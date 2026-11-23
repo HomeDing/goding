@@ -11,9 +11,10 @@
       "mode": "auto",
       "program": "main.go",
       "args": [
-        "midi", "--device", "LPX",
-        "serve", "--verbose"
+        "midi", "--device", "LPD",
+        "serve"
       ]
     }
   ]
 }
+// , "--verbose"
